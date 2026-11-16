@@ -1,12 +1,11 @@
 import { h } from '../ui.js'
 import { backlog, formatLabels } from '../model.js'
-import { localDate } from '../time.js'
 import { openPlanEditor } from './editors.js'
 import { nextSlot } from './day.js'
 
 // Unfinished work from earlier days. Returns null when there is none.
 export function renderBacklog(ctx) {
-  const items = backlog(ctx.allPlans, ctx.courses, ctx.allActuals, localDate(new Date()))
+  const items = backlog(ctx.allPlans, ctx.courses, ctx.allActuals, ctx.today())
   if (!items.length) return null
   const list = h('div', {})
   for (const it of items) {

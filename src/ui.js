@@ -1,5 +1,5 @@
 // Small DOM helpers: element builder, bottom sheet, toast, time selects.
-import { toHHMM, toMin } from './time.js'
+import { toHHMM, toMin, clock } from './time.js'
 
 export function h(tag, props = {}, ...children) {
   const el = document.createElement(tag)
@@ -50,9 +50,10 @@ export function toast(msg) {
 
 export function timeSelect(id, from, to, step, value) {
   const sel = h('select', { id })
-  for (let m = toMin(from); m <= toMin(to); m += step) sel.append(h('option', { value: toHHMM(m) }, toHHMM(m)))
+  const label = (v) => (toMin(v) >= 1440 ? `새벽 ${clock(v)}` : v)
+  for (let m = toMin(from); m <= toMin(to); m += step) sel.append(h('option', { value: toHHMM(m) }, label(toHHMM(m))))
   if (value) {
-    if (![...sel.options].some((o) => o.value === value)) sel.append(h('option', { value }, value))
+    if (![...sel.options].some((o) => o.value === value)) sel.append(h('option', { value }, label(value)))
     sel.value = value
   }
   return sel

@@ -1,5 +1,5 @@
 import { h } from '../ui.js'
-import { toMin, toHHMM, localDate, dday } from '../time.js'
+import { toMin, toHHMM, localDate, dday, clock, studyDate } from '../time.js'
 import { dayAchievement, formatLabels, planStatus, timeTableCells, subjectTotals } from '../model.js'
 import { needsBackupReminder } from '../backup.js'
 import { openPlanEditor, openActualEditor } from './editors.js'
@@ -24,7 +24,7 @@ export function blockTitle(ctx, b) {
 }
 
 export function renderHead(ctx) {
-  const today = localDate(new Date())
+  const today = ctx.today()
   const [, m, d] = ctx.date.split('-').map(Number)
   const wd = WD[new Date(ctx.date + 'T00:00').getDay()]
   const ach = dayAchievement(ctx.plans, ctx.actuals, ctx.courses)
@@ -55,7 +55,7 @@ export function renderHead(ctx) {
 }
 
 export function renderPlans(ctx) {
-  const today = localDate(new Date())
+  const today = ctx.today()
   const plans = ctx.plans.slice().sort((a, b) => toMin(a.start) - toMin(b.start))
   const list = h('div', {})
   for (const p of plans) {
@@ -65,7 +65,7 @@ export function renderPlans(ctx) {
       h('span', { class: 'box', 'aria-label': { done: '다 함', partial: '덜 함', missed: '못 함', todo: '아직' }[st] }, MARK[st]),
       h('span', { class: 'tag hl', style: { '--c': ctx.colorOf(p) } }),
       h('span', { class: 'what' }, h('span', {}, title), sub && h('small', {}, sub)),
-      h('span', { class: 'when' }, `${p.start}–${p.end}`)))
+      h('span', { class: 'when' }, `${clock(p.start)}–${clock(p.end)}`)))
   }
   list.append(h('button', { class: 'line add', onClick: () => openPlanEditor(ctx, nextSlot(ctx)) }, '＋ 계획 쓰기'))
   return h('section', {}, h('h3', { class: 'sec' }, h('span', {}, 'PLAN'), h('span', {}, '○ 다 함 · △ 덜 함 · ✕ 못 함')), list)
@@ -74,9 +74,8 @@ export function renderPlans(ctx) {
 // A free hour after the last plan (or from now, on today).
 export function nextSlot(ctx) {
   const { dayStart, dayEnd } = ctx.settings
-  const now = new Date()
   let s = Math.max(toMin(dayStart), ...ctx.plans.map((p) => toMin(p.end)))
-  if (ctx.date === localDate(now) && !ctx.plans.length) s = Math.max(s, Math.ceil((now.getHours() * 60 + now.getMinutes()) / 30) * 30)
+  if (ctx.date === ctx.today() && !ctx.plans.length) s = Math.max(s, Math.ceil(ctx.nowMin() / 30) * 30)
   s = Math.min(s, toMin(dayEnd) - 30)
   return { start: toHHMM(s), end: toHHMM(Math.min(s + 60, toMin(dayEnd))) }
 }
@@ -85,31 +84,32 @@ export function renderTimeTable(ctx) {
   const { dayStart, dayEnd } = ctx.settings
   const done = timeTableCells(ctx.actuals, dayStart, dayEnd)
   const planned = timeTableCells(ctx.plans, dayStart, dayEnd)
-  const now = new Date()
   const tm = ctx.settings.timer
-  const running = tm && localDate(new Date(tm.startedAt)) === ctx.date
-    ? { s: new Date(tm.startedAt).getHours() * 60 + new Date(tm.startedAt).getMinutes(), e: localDate(now) === ctx.date ? now.getHours() * 60 + now.getMinutes() + 1 : 1440, c: ctx.colorOf(tm) }
+  const tmStart = tm && new Date(tm.startedAt)
+  const running = tm && studyDate(tmStart, dayEnd) === ctx.date
+    ? { s: Math.floor((tmStart - new Date(ctx.date + 'T00:00')) / 60000), e: ctx.today() === ctx.date ? ctx.nowMin() + 1 : toMin(dayEnd), c: ctx.colorOf(tm) }
     : null
 
   const tt = h('div', { class: 'tt' })
   done.forEach((row, r) => {
-    tt.append(h('span', { class: 'hr' }, String(row.hour).padStart(2, '0')))
+    tt.append(h('span', { class: 'hr' }, String(row.hour % 24).padStart(2, '0')))
     row.cells.forEach((a, i) => {
       const startMin = row.hour * 60 + i * 10
       const t = toHHMM(startMin)
+      const shown = clock(t)
       const p = planned[r].cells[i]
       const isRun = !a && running && startMin < running.e && startMin + 10 > running.s
       const style = {}
       if (a) style['--c'] = ctx.colorOf(a)
       if (isRun) style['--c'] = running.c
       if (p) style['--pc'] = ctx.colorOf(p)
-      const label = a ? `${t} ${blockTitle(ctx, a).title}` : `${t} 한 것 기록`
+      const label = a ? `${shown} ${blockTitle(ctx, a).title}` : `${shown} 한 것 기록`
       tt.append(h('button', { class: 'cell' + (i === 5 ? ' c6' : '') + (p && !a && !isRun ? ' planned' : '') + (isRun ? ' running' : ''), style, 'aria-label': label,
         onClick: () => {
           if (a) return openActualEditor(ctx, a)
           openPicker(ctx, { title: '무엇을 했나요?', onPick: (choice) => {
             const plan = choice.planId && ctx.plans.find((x) => x.id === choice.planId)
-            const end = plan && toMin(plan.end) > startMin ? plan.end : toHHMM(Math.min(startMin + 30, 1440))
+            const end = plan && toMin(plan.end) > startMin ? plan.end : toHHMM(Math.min(startMin + 30, toMin(dayEnd)))
             openActualEditor(ctx, { ...choice, start: t, end, source: 'manual' })
           } })
         } }))

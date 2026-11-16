@@ -1,5 +1,5 @@
 import { openStore } from './store.js'
-import { localDate, rollDate } from './time.js'
+import { rollDate, studyDate, studyNowMin } from './time.js'
 import { DEFAULT_SUBJECTS, subjectOf, guessSubject } from './model.js'
 import { renderHead, renderPlans, renderTimeTable } from './views/day.js'
 import { renderCourses } from './views/courses.js'
@@ -12,7 +12,7 @@ const timerRoot = document.getElementById('timer')
 
 const ctx = {
   store: null,
-  date: localDate(new Date()),
+  date: null,
   settings: null,
   subjects: DEFAULT_SUBJECTS,
   courses: [],
@@ -24,10 +24,16 @@ const ctx = {
   subjectById(id) { return ctx.subjects.find((s) => s.id === id) || ctx.subjects.find((s) => s.id === 'etc') || ctx.subjects[0] },
   // Highlighter colour of a plan or record.
   colorOf(block) { return ctx.subjectById(subjectOf(block, ctx.courses, ctx.allPlans)).color },
+  // The study day runs past midnight, so 01:00 still counts as "today".
+  today() { return studyDate(new Date(), ctx.settings?.dayEnd || '26:00') },
+  nowMin() { return studyNowMin(new Date(), ctx.settings?.dayEnd || '26:00') },
   setDate(d) { ctx.date = d; return ctx.refresh() },
   async refresh() {
     const s = ctx.store
     ;[ctx.settings, ctx.courses, ctx.allPlans, ctx.allActuals] = await Promise.all([s.getSettings(), s.getAll('courses'), s.getAll('plans'), s.getAll('actuals')])
+    // One-time move to the 04:00–02:00 study day.
+    if (!ctx.settings.rangeV2) ctx.settings = await s.saveSettings({ dayStart: '04:00', dayEnd: '26:00', rangeV2: true })
+    ctx.date ||= ctx.today()
     ctx.subjects = ctx.settings.subjects?.length ? ctx.settings.subjects : DEFAULT_SUBJECTS
     // Courses saved before subjects existed get a subject guessed from their name.
     for (const c of ctx.courses) c.subjectId ||= guessSubject(c.name)
@@ -57,10 +63,10 @@ async function boot() {
     return
   }
   // iPad keeps the app suspended overnight: a view left on "today" moves to the new today.
-  let lastToday = localDate(new Date())
+  let lastToday = ctx.today()
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return
-    const nowToday = localDate(new Date())
+    const nowToday = ctx.today()
     ctx.date = rollDate(ctx.date, lastToday, nowToday)
     lastToday = nowToday
     ctx.refresh()

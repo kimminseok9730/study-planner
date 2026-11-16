@@ -22,10 +22,10 @@ test('remove', async () => {
 })
 test('default settings and patch', async () => {
   const s = await fresh()
-  assert.deepEqual(await s.getSettings(), { dayStart: '06:00', dayEnd: '24:00', lastBackupAt: null, timer: null, subjects: null, dday: null, memos: {} })
+  assert.deepEqual(await s.getSettings(), { dayStart: '04:00', dayEnd: '26:00', lastBackupAt: null, timer: null, subjects: null, dday: null, memos: {} })
   await s.saveSettings({ dayEnd: '23:00' })
   assert.equal((await s.getSettings()).dayEnd, '23:00')
-  assert.equal((await s.getSettings()).dayStart, '06:00')
+  assert.equal((await s.getSettings()).dayStart, '04:00')
 })
 test('replaceAll is atomic', async () => {
   const s = await fresh()

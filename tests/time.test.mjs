@@ -18,7 +18,9 @@ test('timer same day', () => {
   assert.deepEqual(r, { date: '2026-11-16', start: '18:05', end: '19:20', minutes: 75 })
 })
 test('timer under 1 minute → null', () => { assert.equal(clipTimerToDay(new Date(2026, 10, 16, 9, 0, 0), new Date(2026, 10, 16, 9, 0, 40), '24:00'), null) })
-test('timer started after day end → null', () => { assert.equal(clipTimerToDay(new Date(2026, 10, 16, 23, 30), new Date(2026, 10, 16, 23, 50), '23:00'), null) })
+test('timer after an early day end is still kept up to midnight', () => {
+  assert.deepEqual(clipTimerToDay(new Date(2026, 10, 16, 23, 30), new Date(2026, 10, 16, 23, 50), '23:00'), { date: '2026-11-16', start: '23:30', end: '23:50', minutes: 20 })
+})
 test('localDate', () => { assert.equal(localDate(new Date(2026, 0, 5, 23, 59)), '2026-01-05') })
 
 import { rollDate } from '../src/time.js'
@@ -26,4 +28,21 @@ test('rollDate moves a stale "today" view forward, keeps other days', () => {
   assert.equal(rollDate('2026-11-16', '2026-11-16', '2026-11-17'), '2026-11-17')
   assert.equal(rollDate('2026-11-10', '2026-11-16', '2026-11-17'), '2026-11-10')
   assert.equal(rollDate('2026-11-16', '2026-11-16', '2026-11-16'), '2026-11-16')
+})
+
+import { studyDate, studyNowMin, clock } from '../src/time.js'
+test('study day runs past midnight: 01:30 belongs to the previous date', () => {
+  assert.equal(studyDate(new Date(2026, 10, 17, 1, 30), '26:00'), '2026-11-16')
+  assert.equal(studyNowMin(new Date(2026, 10, 17, 1, 30), '26:00'), 1530)
+  assert.equal(studyDate(new Date(2026, 10, 17, 2, 0), '26:00'), '2026-11-17')
+  assert.equal(studyNowMin(new Date(2026, 10, 17, 4, 10), '26:00'), 250)
+  assert.equal(studyDate(new Date(2026, 10, 17, 1, 30), '24:00'), '2026-11-17')
+})
+test('clock shows times after midnight as 00–02', () => {
+  assert.equal(clock('25:30'), '01:30'); assert.equal(clock('24:00'), '00:00'); assert.equal(clock('18:10'), '18:10')
+})
+test('timer across midnight stays on the study date when the day ends at 02:00', () => {
+  assert.deepEqual(clipTimerToDay(new Date(2026, 10, 16, 23, 10), new Date(2026, 10, 17, 1, 0), '26:00'), { date: '2026-11-16', start: '23:10', end: '25:00', minutes: 110 })
+  assert.deepEqual(clipTimerToDay(new Date(2026, 10, 17, 0, 30), new Date(2026, 10, 17, 1, 15), '26:00'), { date: '2026-11-16', start: '24:30', end: '25:15', minutes: 45 })
+  assert.deepEqual(clipTimerToDay(new Date(2026, 10, 17, 1, 30), new Date(2026, 10, 17, 5, 0), '26:00'), { date: '2026-11-16', start: '25:30', end: '26:00', minutes: 30 })
 })

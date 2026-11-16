@@ -6,7 +6,7 @@ import { DEFAULT_SUBJECTS } from '../model.js'
 export function openSettings(ctx) {
   const s = ctx.settings
   const start = timeSelect('s-start', '00:00', '12:00', 60, s.dayStart)
-  const end = timeSelect('s-end', '13:00', '24:00', 60, s.dayEnd)
+  const end = timeSelect('s-end', '13:00', '28:00', 60, s.dayEnd)
   const msg = h('p', { class: 'err', role: 'alert' })
   const saveRange = async () => {
     await ctx.store.saveSettings({ dayStart: start.value, dayEnd: end.value })
@@ -90,7 +90,7 @@ export function openSettings(ctx) {
     h('h3', { class: 'sec' }, h('span', {}, '과목 색'), h('span', {}, '색을 눌러 형광펜 고르기')),
     subjBox,
     h('h3', { class: 'sec' }, h('span', {}, 'TIME TABLE')),
-    h('div', { class: 'row2' }, field('시작', start), field('끝', end)),
+    h('div', { class: 'row2' }, field('공부 시작', start), field('공부 끝', end)),
     h('h3', { class: 'sec' }, h('span', {}, '백업')),
     h('p', { class: 'muted' }, `데이터는 이 아이패드에만 있어요. 홈 화면 앱과 사파리 탭은 데이터가 따로라서, 늘 홈 화면 아이콘으로 여세요. 가끔 내보내서 파일 앱에 보관하세요. 마지막 백업: ${last}`),
     h('div', { class: 'actions', style: { justifyContent: 'flex-start' } }, exportBtn, h('button', { onClick: () => file.click() }, '백업 불러오기'), file),

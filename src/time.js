@@ -40,16 +40,36 @@ export function localDate(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-// Turn a timer run into a block on the start date, clipped to the day end. Returns null if under a minute.
+// A study day can run past midnight (dayEnd '26:00' = 02:00 next morning). Times after midnight are
+// stored on the day they belong to as '24:30', '25:10', … and shown with clock().
+export function studyDate(now, dayEnd) {
+  const over = toMin(dayEnd) - 1440
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  if (over > 0 && nowMin < over) return localDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))
+  return localDate(now)
+}
+
+// Minutes since the study date's midnight (can exceed 1440).
+export function studyNowMin(now, dayEnd) {
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  return studyDate(now, dayEnd) === localDate(now) ? nowMin : nowMin + 1440
+}
+
+// '25:30' → '01:30' for display.
+export function clock(hhmm) {
+  return toHHMM(toMin(hhmm) % 1440)
+}
+
+// Turn a timer run into a block on its study date, clipped to the day end (never earlier than midnight,
+// so late study is not dropped). Returns null if under a minute.
 export function clipTimerToDay(startedAt, now, dayEnd) {
-  const date = localDate(startedAt)
-  const startMin = startedAt.getHours() * 60 + startedAt.getMinutes()
-  const dayEndMs = new Date(startedAt.getFullYear(), startedAt.getMonth(), startedAt.getDate()).getTime() + toMin(dayEnd) * 60000
-  const endMs = Math.min(now.getTime(), dayEndMs)
-  const minutes = Math.floor(endMs / 60000) - Math.floor(startedAt.getTime() / 60000)
-  if (minutes < 1) return null
-  const endMin = Math.min(startMin + minutes, toMin(dayEnd))
-  if (endMin <= startMin) return null
+  const date = studyDate(startedAt, dayEnd)
+  const [y, m, d] = date.split('-').map(Number)
+  const base = new Date(y, m - 1, d).getTime()
+  const startMin = Math.floor((startedAt.getTime() - base) / 60000)
+  const limit = Math.max(toMin(dayEnd), 1440)
+  const endMin = Math.min(Math.floor((now.getTime() - base) / 60000), limit)
+  if (endMin - startMin < 1) return null
   return { date, start: toHHMM(startMin), end: toHHMM(endMin), minutes: endMin - startMin }
 }
 
