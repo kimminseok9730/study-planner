@@ -75,8 +75,9 @@ h3.sec span + span { letter-spacing: 0; color: var(--pencil); font-family: var(-
 .tt .hr { font: 600 12px var(--mono); display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--ink); background: transparent; }
 .tt .c6 { border-right: 1px solid var(--ink); }
 .tt button.cell { background: color-mix(in srgb, var(--c, transparent) var(--hl), var(--paper)); position: relative; }
-.tt button.cell.planned::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--pc); }
-.tt button.cell.running { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--c) var(--hl), var(--paper)), color-mix(in srgb, var(--c) var(--hl), var(--paper)) 4px, var(--paper) 4px, var(--paper) 8px); }
+/* planned but not done yet: pencil hatching in the subject colour; done: solid highlighter */
+.tt button.cell.planned { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--pc) var(--hl), var(--paper)) 0 2px, transparent 2px 7px); }
+.tt button.cell.running { outline: 1.5px dashed var(--ink); outline-offset: -3px; }
 .totals { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; margin-top: 8px; }
 .totals i { display: inline-block; width: 12px; height: 12px; margin-right: 5px; vertical-align: -1px; }
 .totals b { font: 600 13px var(--mono); }

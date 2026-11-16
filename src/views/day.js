@@ -104,7 +104,7 @@ export function renderTimeTable(ctx) {
       if (isRun) style['--c'] = running.c
       if (p) style['--pc'] = ctx.colorOf(p)
       const label = a ? `${t} ${blockTitle(ctx, a).title}` : `${t} 한 것 기록`
-      tt.append(h('button', { class: 'cell' + (i === 5 ? ' c6' : '') + (p ? ' planned' : '') + (isRun ? ' running' : ''), style, 'aria-label': label,
+      tt.append(h('button', { class: 'cell' + (i === 5 ? ' c6' : '') + (p && !a && !isRun ? ' planned' : '') + (isRun ? ' running' : ''), style, 'aria-label': label,
         onClick: () => {
           if (a) return openActualEditor(ctx, a)
           openPicker(ctx, { title: '무엇을 했나요?', onPick: (choice) => {
@@ -124,7 +124,7 @@ export function renderTimeTable(ctx) {
   if (!totals.length) legend.append(h('span', { class: 'muted' }, '빈칸을 누르거나 아래에서 타이머를 켜면 과목 색으로 칠해져요.'))
 
   return h('section', {},
-    h('h3', { class: 'sec' }, h('span', {}, 'TIME TABLE'), h('span', {}, '한 칸 = 10분 · 아래 색 띠 = 계획')),
+    h('h3', { class: 'sec' }, h('span', {}, 'TIME TABLE'), h('span', {}, '한 칸 = 10분 · 빗금 = 계획 · 칠한 칸 = 한 것')),
     h('div', { class: 'tthead' }, h('span'), ...[10, 20, 30, 40, 50, 60].map((n) => h('span', {}, n))),
     tt, legend)
 }
