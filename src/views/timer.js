@@ -3,6 +3,7 @@ import { clipTimerToDay, localDate } from '../time.js'
 import { formatLabels } from '../model.js'
 import { openPicker } from './picker.js'
 import { confirmLectures } from './editors.js'
+import { photoBox } from './photo.js'
 
 let tick = null
 
@@ -51,10 +52,12 @@ export function renderTimerBar(root, ctx) {
       h('button', { class: 'primary', onClick: () => openPicker(ctx, { title: '무엇을 공부하나요?', date: localDate(new Date()), onPick: (c) => startTimer(ctx, c) }) }, '▶ 공부 시작')))
     return
   }
-  const clock = h('span', { class: 'clock' }, elapsed(t.startedAt))
+  const clock = h('span', { class: 'clock hl', style: { '--c': ctx.colorOf(t), padding: '0 6px' } }, elapsed(t.startedAt))
   root.replaceChildren(h('div', { class: 'inner' },
-    h('span', { class: 'what' }, h('span', { class: 'dot', 'aria-hidden': 'true' }), label(ctx, t)),
-    h('span', { style: { display: 'flex', alignItems: 'center', gap: '12px' } }, clock,
+    h('span', { class: 'what' },
+      t.kind === 'lecture' ? photoBox(ctx.courseById(t.courseId), true) : h('span', { class: 'tag hl', style: { '--c': ctx.colorOf(t) } }),
+      h('span', { class: 't' }, label(ctx, t))),
+    h('span', { class: 'right' }, clock,
       h('button', { class: 'primary', onClick: () => stopTimer(ctx) }, '■ 정지'))))
   tick = setInterval(() => { clock.textContent = elapsed(t.startedAt) }, 1000)
 }

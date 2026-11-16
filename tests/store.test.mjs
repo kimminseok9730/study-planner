@@ -22,7 +22,7 @@ test('remove', async () => {
 })
 test('default settings and patch', async () => {
   const s = await fresh()
-  assert.deepEqual(await s.getSettings(), { dayStart: '06:00', dayEnd: '24:00', lastBackupAt: null, timer: null })
+  assert.deepEqual(await s.getSettings(), { dayStart: '06:00', dayEnd: '24:00', lastBackupAt: null, timer: null, subjects: null, dday: null, memos: {} })
   await s.saveSettings({ dayEnd: '23:00' })
   assert.equal((await s.getSettings()).dayEnd, '23:00')
   assert.equal((await s.getSettings()).dayStart, '06:00')
@@ -35,7 +35,7 @@ test('replaceAll is atomic', async () => {
 })
 test('replaceAll and exportAll round trip', async () => {
   const s = await fresh()
-  const data = { courses: [{ id: 'c', name: 'a', platform: 'etc', lectures: [] }], plans: [], actuals: [], settings: { dayStart: '07:00', dayEnd: '24:00', lastBackupAt: null, timer: null } }
+  const data = { courses: [{ id: 'c', name: 'a', platform: 'etc', lectures: [] }], plans: [], actuals: [], settings: { dayStart: '07:00', dayEnd: '24:00', lastBackupAt: null, timer: null, subjects: null, dday: null, memos: {} } }
   await s.replaceAll(data)
   assert.deepEqual(await s.exportAll(), data)
 })

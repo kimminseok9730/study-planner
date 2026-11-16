@@ -1,15 +1,16 @@
 import { h, openSheet, closeSheet, timeSelect, field, dangerButton, toast } from '../ui.js'
 import { validateBlock, duration, toMin, toHHMM } from '../time.js'
 import { formatLabels } from '../model.js'
+import { subjectButtons } from './courses.js'
 
 // Lecture chips for one course. Returns { el, get(): string[] }.
-export function lectureChips(course, selected = [], { hideDone = false, only = null } = {}) {
+export function lectureChips(course, selected = [], { hideDone = false, only = null, color = null } = {}) {
   const sel = new Set(selected)
   const el = h('div', { class: 'chips' })
   for (const l of course.lectures.slice().sort((a, b) => a.order - b.order)) {
     if (only && !only.includes(l.label)) continue
     if (hideDone && l.done && !sel.has(l.label)) continue
-    const b = h('button', { type: 'button', class: 'chip' + (l.done ? ' isdone' : ''), 'aria-pressed': String(sel.has(l.label)), title: l.title || '',
+    const b = h('button', { type: 'button', class: 'chip' + (l.done ? ' isdone' : ''), style: color ? { '--c': color } : null, 'aria-pressed': String(sel.has(l.label)), title: l.title || '',
       onClick: () => { sel.has(l.label) ? sel.delete(l.label) : sel.add(l.label); b.setAttribute('aria-pressed', String(sel.has(l.label))) } },
     /^\d/.test(l.label) ? `${l.label}강` : l.label)
     el.append(b)
@@ -30,20 +31,21 @@ export function contentFields(ctx, init = {}) {
   const textIn = h('input', { type: 'text', id: 'f-text', placeholder: '기출 풀이 수학 20문제', value: init.text || '' })
   const drawChips = (labels) => {
     const c = ctx.courseById(courseSel.value)
-    chips = c ? lectureChips(c, labels, { hideDone: true }) : null
+    chips = c ? lectureChips(c, labels, { hideDone: true, color: ctx.subjectById(c.subjectId).color }) : null
     return chips ? chips.el : h('span', { class: 'muted' }, '강좌를 먼저 추가해 주세요')
   }
   const chipBox = h('div')
+  const subject = subjectButtons(ctx, init.subjectId || 'etc')
   courseSel.addEventListener('change', () => chipBox.replaceChildren(drawChips([])))
   const draw = () => {
     seg.replaceChildren(
       h('button', { type: 'button', 'aria-pressed': String(kind === 'lecture'), onClick: () => { kind = 'lecture'; draw() } }, '강의'),
       h('button', { type: 'button', 'aria-pressed': String(kind === 'text'), onClick: () => { kind = 'text'; draw() } }, '할 일'))
     if (kind === 'lecture') {
-      if (!ctx.courses.length) { box.replaceChildren(h('p', { class: 'muted' }, '등록된 강좌가 없어요. 오른쪽 강좌 진도에서 먼저 추가해 주세요.')); return }
+      if (!ctx.courses.length) { box.replaceChildren(h('p', { class: 'muted' }, '등록된 강좌가 없어요. LECTURE에서 먼저 추가해 주세요.')); return }
       chipBox.replaceChildren(drawChips(init.labels || []))
       box.replaceChildren(field('강좌', courseSel), h('div', { class: 'field' }, h('span', {}, '강의 (눌러서 선택)'), chipBox))
-    } else box.replaceChildren(field('할 일', textIn))
+    } else box.replaceChildren(field('할 일', textIn), h('div', { class: 'field' }, h('span', {}, '과목'), subject.el))
   }
   draw()
   return {
@@ -57,7 +59,7 @@ export function contentFields(ctx, init = {}) {
       }
       const text = textIn.value.trim()
       if (!text) return '할 일을 적어 주세요'
-      return { kind, text }
+      return { kind, text, subjectId: subject.get() }
     },
   }
 }
@@ -65,22 +67,22 @@ export function contentFields(ctx, init = {}) {
 export function openPlanEditor(ctx, init) {
   const editing = Boolean(init.id)
   const { dayStart, dayEnd } = ctx.settings
-  const startSel = timeSelect('f-start', dayStart, toHHMM(toMin(dayEnd) - 30), 30, init.start)
-  const endSel = timeSelect('f-end', toHHMM(toMin(dayStart) + 30), dayEnd, 30, init.end)
+  const startSel = timeSelect('f-start', dayStart, toHHMM(toMin(dayEnd) - 10), 10, init.start)
+  const endSel = timeSelect('f-end', toHHMM(toMin(dayStart) + 10), dayEnd, 10, init.end)
   const content = contentFields(ctx, init)
   const err = h('p', { class: 'err', role: 'alert' })
   const save = async () => {
     const c = content.read()
     if (typeof c === 'string') return (err.textContent = c)
     const plan = { ...(editing ? init : {}), date: init.date || ctx.date, start: startSel.value, end: endSel.value, ...c }
-    if (c.kind === 'lecture') delete plan.text; else { delete plan.courseId; delete plan.labels }
+    if (c.kind === 'lecture') { delete plan.text; delete plan.subjectId } else { delete plan.courseId; delete plan.labels }
     if (init.fromPlanId) plan.fromPlanId = init.fromPlanId
     const bad = validateBlock(plan, ctx.allPlans.filter((p) => p.date === plan.date))
     if (bad) return (err.textContent = bad)
     await ctx.store.put('plans', plan)
     closeSheet(); await ctx.refresh()
   }
-  openSheet(editing ? '계획 수정' : '계획 추가', [
+  openSheet(editing ? 'PLAN 고치기' : 'PLAN 쓰기', [
     h('div', { class: 'row2' }, field('시작', startSel), field('끝', endSel)),
     content.el, err,
     h('div', { class: 'actions' },
@@ -131,7 +133,7 @@ export function confirmLectures(ctx, actual) {
   const course = ctx.courseById(courseId)
   if (!course || !labels?.length) return ctx.refresh()
   const known = labels.filter((lb) => course.lectures.some((l) => l.label === lb))
-  const chips = lectureChips(course, known, { only: known })
+  const chips = lectureChips(course, known, { only: known, color: ctx.subjectById(course.subjectId).color })
   const apply = async () => {
     const picked = new Set(chips.get())
     const now = new Date().toISOString()

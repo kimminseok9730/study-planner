@@ -57,3 +57,10 @@ export function clipTimerToDay(startedAt, now, dayEnd) {
 export function rollDate(viewDate, lastToday, nowToday) {
   return viewDate === lastToday && lastToday !== nowToday ? nowToday : viewDate
 }
+
+// 'D-367' before, 'D-DAY' on, 'D+2' after.
+export function dday(target, today) {
+  const d = (s) => { const [y, m, dd] = s.split('-').map(Number); return Date.UTC(y, m - 1, dd) }
+  const n = Math.round((d(target) - d(today)) / 86400000)
+  return n > 0 ? `D-${n}` : n === 0 ? 'D-DAY' : `D+${-n}`
+}

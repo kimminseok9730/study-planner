@@ -66,3 +66,72 @@ export function formatLabels(labels) {
   if (nums && nums.length > 1 && nums.every((n, i) => i === 0 || n === nums[i - 1] + 1)) return `${nums[0]}~${nums.at(-1)}강`
   return labels.join(', ') + '강'
 }
+
+// ── Subjects, plan status, 10-minute time table ──
+
+export const DEFAULT_SUBJECTS = [
+  { id: 'kor', name: '국어', color: '#ff9f8a' },
+  { id: 'math', name: '수학', color: '#8fb4ff' },
+  { id: 'eng', name: '영어', color: '#8fe0b6' },
+  { id: 'sci', name: '탐구', color: '#ffd866' },
+  { id: 'etc', name: '기타', color: '#d5d1c6' },
+]
+
+// Subject of a plan or record: lectures follow their course, text follows itself or its plan.
+export function subjectOf(block, courses, plans) {
+  if (block.kind === 'lecture') return courses.find((c) => c.id === block.courseId)?.subjectId || 'etc'
+  if (block.subjectId) return block.subjectId
+  if (block.planId) return plans.find((p) => p.id === block.planId)?.subjectId || 'etc'
+  return 'etc'
+}
+
+// 'done' ○ · 'partial' △ · 'missed' ✕ · 'todo' (blank)
+export function planStatus(plan, actuals, courses, today) {
+  const linked = actuals.some((a) => a.planId === plan.id)
+  if (plan.kind === 'lecture') {
+    const c = courses.find((x) => x.id === plan.courseId)
+    const labels = plan.labels || []
+    const done = c ? labels.filter((lb) => c.lectures.some((l) => l.label === lb && l.done)).length : 0
+    if (labels.length && done === labels.length) return 'done'
+    if (done > 0 || linked) return 'partial'
+  } else if (linked) return 'done'
+  return plan.date < today ? 'missed' : 'todo'
+}
+
+// Rows of six 10-minute cells per hour; each cell holds the block that covers most of it, or null.
+export function timeTableCells(blocks, dayStart, dayEnd) {
+  const min = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+  const spans = blocks.map((b) => ({ b, s: min(b.start), e: min(b.end) }))
+  const rows = []
+  for (let hour = Math.floor(min(dayStart) / 60); hour * 60 < min(dayEnd); hour++) {
+    const cells = []
+    for (let i = 0; i < 6; i++) {
+      const cs = hour * 60 + i * 10, ce = cs + 10
+      let best = null, bestOv = 0
+      for (const { b, s, e } of spans) {
+        const ov = Math.min(e, ce) - Math.max(s, cs)
+        if (ov > bestOv) { best = b; bestOv = ov }
+      }
+      cells.push(best)
+    }
+    rows.push({ hour, cells })
+  }
+  return rows
+}
+
+export function subjectTotals(actuals, courses, plans) {
+  const sum = new Map()
+  for (const a of actuals) {
+    const id = subjectOf(a, courses, plans)
+    sum.set(id, (sum.get(id) || 0) + a.minutes)
+  }
+  return [...sum].map(([subjectId, minutes]) => ({ subjectId, minutes })).sort((x, y) => y.minutes - x.minutes)
+}
+
+export function guessSubject(name) {
+  if (/수학|미적|확통|확률|기하|대수/.test(name)) return 'math'
+  if (/국어|문학|독서|언매|화작|문법|비문학/.test(name)) return 'kor'
+  if (/영어|영문|구문|영단어|English/i.test(name)) return 'eng'
+  if (/물리|화학|생명|생물|지구|과학|사회|사문|생윤|윤리|지리|역사|한국사|경제|정법|탐구/.test(name)) return 'sci'
+  return 'etc'
+}

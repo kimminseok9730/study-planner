@@ -1,21 +1,35 @@
 import { h, openSheet, closeSheet, field, dangerButton } from '../ui.js'
-import { courseProgress } from '../model.js'
+import { courseProgress, guessSubject } from '../model.js'
 import { openImport } from './import.js'
+import { photoBox, cropper } from './photo.js'
 
 export const PLATFORMS = { mimac: '대성마이맥', mega: '메가스터디', etc: '기타' }
 
-export function renderCourses(root, ctx) {
-  const list = h('div', { class: 'list' })
+// Subject picker buttons. Returns { el, get() }.
+export function subjectButtons(ctx, value) {
+  let cur = value || 'etc'
+  const el = h('div', { class: 'subj' })
+  const draw = () => el.replaceChildren(...ctx.subjects.map((s) => h('button', { type: 'button', class: 'hl', style: { '--c': s.color }, 'aria-pressed': String(s.id === cur),
+    onClick: () => { cur = s.id; draw() } }, s.name)))
+  draw()
+  return { el, get: () => cur }
+}
+
+export function renderCourses(ctx) {
+  const list = h('div', {})
   for (const c of ctx.courses) {
     const p = courseProgress(c)
-    list.append(h('button', { class: 'course', onClick: () => openCourse(ctx, c) },
-      h('div', { class: 'row' }, h('b', {}, c.name), h('span', {}, `${p.done} / ${p.total}강`)),
-      h('div', { class: 'track' }, h('div', { class: 'fill', style: { width: `${p.percent}%` } })),
-      h('div', { class: 'row muted' }, h('span', {}, `${PLATFORMS[c.platform] || '기타'}${c.teacher ? ' · ' + c.teacher : ''} · ${p.percent}%`), h('span', {}, `남은 ${p.total - p.done}강`))))
+    const color = ctx.subjectById(c.subjectId).color
+    const ticks = h('div', { class: 'ticks', 'aria-hidden': 'true' }, c.lectures.slice().sort((a, b) => a.order - b.order).map((l) => h('i', l.done ? { class: 'hl', style: { '--c': color } } : {})))
+    list.append(h('button', { class: 'teach', onClick: () => openCourse(ctx, c) },
+      photoBox(c),
+      h('span', { style: { minWidth: '0' } }, h('b', {}, c.name),
+        h('small', {}, [ctx.subjectById(c.subjectId).name, c.teacher, PLATFORMS[c.platform]].filter(Boolean).join(' · ')), ticks),
+      h('span', { class: 'frac' }, `${p.done}/${p.total}`, h('small', {}, `${p.percent}%`))))
   }
-  if (!ctx.courses.length) list.append(h('p', { class: 'muted' }, '듣고 있는 인강을 추가하면 진도율이 여기 보여요.'))
-  list.append(h('button', { class: 'add', onClick: () => openAdd(ctx) }, '＋ 강좌 추가'))
-  root.replaceChildren(h('h2', {}, '강좌 진도'), list)
+  if (!ctx.courses.length) list.append(h('p', { class: 'muted' }, '듣는 인강을 추가하면 한 강에 한 칸씩 칠해져요.'))
+  list.append(h('button', { class: 'line add', onClick: () => openAdd(ctx) }, '＋ 강좌 추가'))
+  return h('section', {}, h('h3', { class: 'sec' }, h('span', {}, 'LECTURE'), h('span', {}, '한 칸 = 한 강')), list)
 }
 
 function openAdd(ctx) {
@@ -33,18 +47,37 @@ export function openCourse(ctx, course) {
   const platform = h('select', { id: 'c-platform' }, Object.entries(PLATFORMS).map(([v, t]) => h('option', { value: v }, t)))
   platform.value = c.platform || 'etc'
   const teacher = h('input', { type: 'text', id: 'c-teacher', value: c.teacher || '', placeholder: '김범준' })
+  const subject = subjectButtons(ctx, c.subjectId || guessSubject(c.name))
   const total = h('input', { type: 'number', id: 'c-total', min: '1', max: '300', inputMode: 'numeric', placeholder: '32' })
   const chips = h('div', { class: 'chips' })
   const count = h('span', { class: 'muted' })
   const err = h('p', { class: 'err', role: 'alert' })
+
+  // Teacher photo
+  const photoArea = h('div', {})
+  const fileIn = h('input', { type: 'file', id: 'c-photo', accept: 'image/*', style: { display: 'none' } })
+  const drawPhoto = () => photoArea.replaceChildren(h('div', { style: { display: 'flex', gap: '12px', alignItems: 'center' } },
+    photoBox({ ...c, teacher: teacher.value, name: name.value }),
+    h('div', { class: 'actions', style: { justifyContent: 'flex-start' } },
+      h('button', { type: 'button', onClick: () => fileIn.click() }, c.photo ? '사진 바꾸기' : '선생님 사진 넣기'),
+      c.photo && h('button', { type: 'button', class: 'ghost', onClick: () => { delete c.photo; drawPhoto() } }, '사진 빼기'))))
+  fileIn.addEventListener('change', () => {
+    const f = fileIn.files[0]; fileIn.value = ''
+    if (!f) return
+    photoArea.replaceChildren(cropper(f, (dataUrl) => { if (dataUrl) c.photo = dataUrl; else if (dataUrl === null && !c.photo) err.textContent = ''; drawPhoto() }))
+  })
+  drawPhoto()
+
   const drawChips = () => {
     c.lectures.sort((a, b) => a.order - b.order)
-    chips.replaceChildren(...c.lectures.map((l) => h('button', { type: 'button', class: 'chip isdone', 'aria-pressed': String(l.done), title: l.title || '',
+    const color = ctx.subjectById(subject.get()).color
+    chips.replaceChildren(...c.lectures.map((l) => h('button', { type: 'button', class: 'chip', style: { '--c': color }, 'aria-pressed': String(l.done), title: l.title || '',
       onClick: () => { l.done = !l.done; l.doneAt = l.done ? new Date().toISOString() : undefined; drawChips() } },
-    /^\d/.test(l.label) ? `${l.label}강` : l.label)))
+    /^\d/.test(l.label) ? l.label : l.label)))
     const done = c.lectures.filter((l) => l.done).length
-    count.textContent = `${c.lectures.length}강 중 ${done}강 들음 · 눌러서 들음/안 들음 바꾸기`
+    count.textContent = `${c.lectures.length}강 중 ${done}강 들음 · 눌러서 칠하기/지우기`
   }
+  subject.el.addEventListener('click', drawChips)
   const fill = () => {
     const n = Math.floor(Number(total.value))
     if (!(n >= 1 && n <= 300)) return (err.textContent = '1부터 300 사이 숫자를 넣어 주세요')
@@ -54,14 +87,16 @@ export function openCourse(ctx, course) {
   }
   drawChips()
   const save = async () => {
-    c.name = name.value.trim(); c.platform = platform.value; c.teacher = teacher.value.trim()
+    c.name = name.value.trim(); c.platform = platform.value; c.teacher = teacher.value.trim(); c.subjectId = subject.get()
     if (!c.name) return (err.textContent = '강좌 이름을 적어 주세요')
     await ctx.store.put('courses', c)
     closeSheet(); await ctx.refresh()
   }
-  openSheet(editing ? '강좌' : '강좌 직접 입력', [
+  openSheet(editing ? 'LECTURE' : 'NEW LECTURE', [
+    photoArea, fileIn,
     field('강좌 이름', name),
-    h('div', { class: 'row2' }, field('사이트', platform), field('선생님 (선택)', teacher)),
+    h('div', { class: 'row2' }, field('선생님', teacher), field('사이트', platform)),
+    h('div', { class: 'field' }, h('span', {}, '과목'), subject.el),
     h('div', { class: 'field' }, h('span', {}, '총 강 수로 채우기'), h('div', { class: 'seg' }, total, h('button', { type: 'button', onClick: fill }, '채우기'))),
     count, chips, err,
     h('div', { class: 'actions' },

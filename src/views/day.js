@@ -1,21 +1,19 @@
-import { h, fmtMin } from '../ui.js'
-import { slots, toMin, toHHMM, localDate, SLOT } from '../time.js'
-import { dayAchievement, formatLabels } from '../model.js'
+import { h } from '../ui.js'
+import { toMin, toHHMM, localDate, dday } from '../time.js'
+import { dayAchievement, formatLabels, planStatus, timeTableCells, subjectTotals } from '../model.js'
 import { needsBackupReminder } from '../backup.js'
 import { openPlanEditor, openActualEditor } from './editors.js'
 import { openPicker } from './picker.js'
 import { openSettings } from './settings.js'
 
 const WD = ['일', '월', '화', '수', '목', '금', '토']
+const MARK = { done: '○', partial: '△', missed: '✕', todo: '' }
 
 function shiftDate(date, days) {
   const [y, m, d] = date.split('-').map(Number)
   return localDate(new Date(y, m - 1, d + days))
 }
-function dateLabel(date) {
-  const [y, m, d] = date.split('-').map(Number)
-  return `${m}월 ${d}일 (${WD[new Date(y, m - 1, d).getDay()]})`
-}
+const hm = (min) => `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`
 
 export function blockTitle(ctx, b) {
   if (b.kind === 'lecture') {
@@ -25,94 +23,108 @@ export function blockTitle(ctx, b) {
   return { title: b.text || '할 일', sub: '' }
 }
 
-function isMiss(ctx, p, today) {
-  const linked = ctx.allActuals.some((a) => a.planId === p.id)
-  if (!linked && p.date >= today) return false
-  if (p.kind === 'lecture') {
-    const c = ctx.courseById(p.courseId)
-    if (!c) return false
-    return (p.labels || []).some((lb) => !c.lectures.find((l) => l.label === lb)?.done)
-  }
-  return !linked
-}
-
-export function renderDay(ctx) {
+export function renderHead(ctx) {
   const today = localDate(new Date())
-  const { dayStart, dayEnd } = ctx.settings
+  const [, m, d] = ctx.date.split('-').map(Number)
+  const wd = WD[new Date(ctx.date + 'T00:00').getDay()]
   const ach = dayAchievement(ctx.plans, ctx.actuals, ctx.courses)
+  const dd = ctx.settings.dday
+  const memo = h('input', { type: 'text', id: 'memo', value: ctx.settings.memos?.[ctx.date] || '', placeholder: '오늘 한 줄', 'aria-label': '메모',
+    onChange: async () => { await ctx.store.saveSettings({ memos: { ...(ctx.settings.memos || {}), [ctx.date]: memo.value.trim() } }); ctx.settings.memos = { ...(ctx.settings.memos || {}), [ctx.date]: memo.value.trim() } } })
 
-  const top = h('div', { class: 'top' },
-    h('div', { class: 'date' },
+  const head = h('div', { class: 'head' },
+    h('div', { class: 'datecell' },
       h('button', { class: 'ghost icon', 'aria-label': '전날', onClick: () => ctx.setDate(shiftDate(ctx.date, -1)) }, '‹'),
-      h('span', {}, dateLabel(ctx.date)),
+      h('span', {}, h('small', {}, 'DATE'), h('br'), h('b', {}, `${m}.${String(d).padStart(2, '0')}`), ` ${wd}`),
       h('button', { class: 'ghost icon', 'aria-label': '다음날', onClick: () => ctx.setDate(shiftDate(ctx.date, 1)) }, '›'),
       ctx.date !== today && h('button', { class: 'ghost', onClick: () => ctx.setDate(today) }, '오늘')),
-    h('div', { class: 'stats' },
-      h('span', {}, '계획 ', h('b', {}, fmtMin(ach.plannedMin))),
-      h('span', {}, '실제 ', h('b', {}, fmtMin(ach.actualMin))),
-      h('span', {}, '달성 ', h('b', {}, `${ach.percent}%`)),
-      h('button', { class: 'ghost icon', 'aria-label': '설정', onClick: () => openSettings(ctx) }, '⚙︎')))
+    h('div', {}, h('small', {}, dd?.label ? dd.label.toUpperCase() : 'D-DAY'),
+      h('button', { class: 'cellbtn', 'aria-label': 'D-day 설정', onClick: () => openSettings(ctx) }, dd?.date ? dday(dd.date, today) : '설정')),
+    h('div', {}, h('small', {}, 'TOTAL'), h('b', {}, hm(ach.actualMin))),
+    h('div', {}, h('small', {}, `달성 · 계획 ${hm(ach.plannedMin)}`), h('b', {}, `${ach.percent}%`)),
+    h('div', { class: 'memo' }, h('small', {}, 'MEMO'), memo),
+    h('div', {}, h('button', { class: 'ghost icon', 'aria-label': '설정', onClick: () => openSettings(ctx) }, '⚙︎')))
 
-  const out = [top]
+  const out = [head]
   const hasData = ctx.courses.length || ctx.allPlans.length || ctx.allActuals.length
   if (hasData && needsBackupReminder(ctx.settings.lastBackupAt, new Date())) {
     out.push(h('div', { class: 'banner' }, h('span', {}, '일주일 넘게 백업을 안 했어요. 사파리가 오래된 데이터를 지울 수 있어요.'),
       h('button', { onClick: () => openSettings(ctx) }, '백업하기')))
   }
+  return out
+}
 
-  const rows = slots(dayStart, dayEnd)
-  const base = toMin(dayStart)
-  const end = toMin(dayEnd)
-  const rowSpan = (s, e) => {
-    const a = Math.max(0, Math.floor((toMin(s) - base) / SLOT))
-    const b = Math.min(rows.length, Math.max(a + 1, Math.ceil((toMin(e) - base) / SLOT)))
-    return a < rows.length && toMin(e) > base ? `${a + 1} / ${b + 1}` : null
+export function renderPlans(ctx) {
+  const today = localDate(new Date())
+  const plans = ctx.plans.slice().sort((a, b) => toMin(a.start) - toMin(b.start))
+  const list = h('div', {})
+  for (const p of plans) {
+    const st = planStatus(p, ctx.allActuals, ctx.courses, today)
+    const { title, sub } = blockTitle(ctx, p)
+    list.append(h('button', { class: `line ${st}`, onClick: () => openPlanEditor(ctx, p) },
+      h('span', { class: 'box', 'aria-label': { done: '다 함', partial: '덜 함', missed: '못 함', todo: '아직' }[st] }, MARK[st]),
+      h('span', { class: 'tag hl', style: { '--c': ctx.colorOf(p) } }),
+      h('span', { class: 'what' }, h('span', {}, title), sub && h('small', {}, sub)),
+      h('span', { class: 'when' }, `${p.start}–${p.end}`)))
   }
+  list.append(h('button', { class: 'line add', onClick: () => openPlanEditor(ctx, nextSlot(ctx)) }, '＋ 계획 쓰기'))
+  return h('section', {}, h('h3', { class: 'sec' }, h('span', {}, 'PLAN'), h('span', {}, '○ 다 함 · △ 덜 함 · ✕ 못 함')), list)
+}
 
-  const grid = h('div', { class: 'grid', style: { gridTemplateRows: `repeat(${rows.length}, var(--row))` } })
-  rows.forEach((t, i) => {
-    const half = t.endsWith(':30')
-    const r = `${i + 1}`
-    const next = toHHMM(Math.min(toMin(t) + SLOT, end))
-    grid.append(
-      h('div', { class: 'tlabel' + (half ? ' half' : ''), style: { gridRow: r, gridColumn: '1' } }, t),
-      h('button', { class: 'cell' + (half ? ' half' : ''), style: { gridRow: r, gridColumn: '2' }, 'aria-label': `${t} 계획 추가`,
-        onClick: () => openPlanEditor(ctx, { start: t, end: next }) }),
-      h('button', { class: 'cell' + (half ? ' half' : ''), style: { gridRow: r, gridColumn: '3' }, 'aria-label': `${t} 한 것 기록`,
-        onClick: () => openPicker(ctx, { title: '무엇을 했나요?', onPick: (choice) => {
-          const plan = choice.planId && ctx.plans.find((p) => p.id === choice.planId)
-          const s = t
-          const e = plan && toMin(plan.end) > toMin(t) ? plan.end : next
-          openActualEditor(ctx, { ...choice, start: s, end: e, source: 'manual' })
-        } }) }))
+// A free hour after the last plan (or from now, on today).
+export function nextSlot(ctx) {
+  const { dayStart, dayEnd } = ctx.settings
+  const now = new Date()
+  let s = Math.max(toMin(dayStart), ...ctx.plans.map((p) => toMin(p.end)))
+  if (ctx.date === localDate(now) && !ctx.plans.length) s = Math.max(s, Math.ceil((now.getHours() * 60 + now.getMinutes()) / 30) * 30)
+  s = Math.min(s, toMin(dayEnd) - 30)
+  return { start: toHHMM(s), end: toHHMM(Math.min(s + 60, toMin(dayEnd))) }
+}
+
+export function renderTimeTable(ctx) {
+  const { dayStart, dayEnd } = ctx.settings
+  const done = timeTableCells(ctx.actuals, dayStart, dayEnd)
+  const planned = timeTableCells(ctx.plans, dayStart, dayEnd)
+  const now = new Date()
+  const tm = ctx.settings.timer
+  const running = tm && localDate(new Date(tm.startedAt)) === ctx.date
+    ? { s: new Date(tm.startedAt).getHours() * 60 + new Date(tm.startedAt).getMinutes(), e: localDate(now) === ctx.date ? now.getHours() * 60 + now.getMinutes() + 1 : 1440, c: ctx.colorOf(tm) }
+    : null
+
+  const tt = h('div', { class: 'tt' })
+  done.forEach((row, r) => {
+    tt.append(h('span', { class: 'hr' }, String(row.hour).padStart(2, '0')))
+    row.cells.forEach((a, i) => {
+      const startMin = row.hour * 60 + i * 10
+      const t = toHHMM(startMin)
+      const p = planned[r].cells[i]
+      const isRun = !a && running && startMin < running.e && startMin + 10 > running.s
+      const style = {}
+      if (a) style['--c'] = ctx.colorOf(a)
+      if (isRun) style['--c'] = running.c
+      if (p) style['--pc'] = ctx.colorOf(p)
+      const label = a ? `${t} ${blockTitle(ctx, a).title}` : `${t} 한 것 기록`
+      tt.append(h('button', { class: 'cell' + (i === 5 ? ' c6' : '') + (p ? ' planned' : '') + (isRun ? ' running' : ''), style, 'aria-label': label,
+        onClick: () => {
+          if (a) return openActualEditor(ctx, a)
+          openPicker(ctx, { title: '무엇을 했나요?', onPick: (choice) => {
+            const plan = choice.planId && ctx.plans.find((x) => x.id === choice.planId)
+            const end = plan && toMin(plan.end) > startMin ? plan.end : toHHMM(Math.min(startMin + 30, 1440))
+            openActualEditor(ctx, { ...choice, start: t, end, source: 'manual' })
+          } })
+        } }))
+    })
   })
 
-  for (const p of ctx.plans) {
-    const span = rowSpan(p.start, p.end); if (!span) continue
-    const { title, sub } = blockTitle(ctx, p)
-    grid.append(h('button', { class: 'blk p' + (isMiss(ctx, p, today) ? ' miss' : ''), style: { gridRow: span, gridColumn: '2' },
-      onClick: () => openPlanEditor(ctx, p) }, h('b', {}, title), h('small', {}, [sub, `${p.start}–${p.end}`].filter(Boolean).join(' · '))))
-  }
-  for (const a of ctx.actuals) {
-    const span = rowSpan(a.start, a.end); if (!span) continue
-    const { title, sub } = blockTitle(ctx, a)
-    grid.append(h('button', { class: 'blk ' + (a.planId ? 'd' : 'o'), style: { gridRow: span, gridColumn: '3' },
-      onClick: () => openActualEditor(ctx, a) }, h('b', {}, (a.planId ? '✓ ' : '') + title),
-      h('small', {}, [sub, `${a.start}–${a.end}`, a.source === 'timer' ? '타이머' : ''].filter(Boolean).join(' · '))))
-  }
-  const tm = ctx.settings.timer
-  if (tm && localDate(new Date(tm.startedAt)) === ctx.date) {
-    const s = new Date(tm.startedAt)
-    const st = toHHMM(s.getHours() * 60 + s.getMinutes())
-    const now = new Date()
-    const en = localDate(now) === ctx.date ? toHHMM(Math.min(now.getHours() * 60 + now.getMinutes() + 1, end)) : dayEnd
-    const span = rowSpan(st, en)
-    if (span) grid.append(h('div', { class: 'blk running', style: { gridRow: span, gridColumn: '3' } }, h('b', {}, '기록 중…'), h('small', {}, `${st}부터`)))
-  }
+  const totals = subjectTotals(ctx.actuals, ctx.courses, ctx.allPlans)
+  const legend = h('div', { class: 'totals' }, totals.map(({ subjectId, minutes }) => {
+    const s = ctx.subjectById(subjectId)
+    return h('span', {}, h('i', { class: 'hl', style: { '--c': s.color } }), `${s.name} `, h('b', {}, hm(minutes)))
+  }))
+  if (!totals.length) legend.append(h('span', { class: 'muted' }, '빈칸을 누르거나 아래에서 타이머를 켜면 과목 색으로 칠해져요.'))
 
-  const panel = h('section', { class: 'panel' },
-    h('h2', {}, '시간표', h('span', { class: 'muted' }, '빈칸을 눌러 추가')),
-    h('div', { class: 'heads' }, h('span'), h('span', {}, '계획'), h('span', {}, '실제로 한 것')),
-    grid)
-  return { top: out, grid: panel }
+  return h('section', {},
+    h('h3', { class: 'sec' }, h('span', {}, 'TIME TABLE'), h('span', {}, '한 칸 = 10분 · 아래 색 띠 = 계획')),
+    h('div', { class: 'tthead' }, h('span'), ...[10, 20, 30, 40, 50, 60].map((n) => h('span', {}, n))),
+    tt, legend)
 }

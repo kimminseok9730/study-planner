@@ -12,10 +12,11 @@ export function openPicker(ctx, { title, onPick, date = ctx.date }) {
   for (const p of plans) {
     const { title: t, sub } = blockTitle(ctx, p)
     const isNow = toMin(p.start) <= nowMin && nowMin < toMin(p.end)
-    list.append(h('button', { type: 'button', class: isNow ? 'primary' : '', onClick: () => {
+    list.append(h('button', { type: 'button', class: 'line' + (isNow ? ' now' : ''), style: { '--c': ctx.colorOf(p) }, onClick: () => {
       closeSheet()
-      onPick({ planId: p.id, kind: p.kind, courseId: p.courseId, labels: p.labels, text: p.text })
-    } }, h('span', {}, h('b', {}, t), sub ? ` · ${sub}` : ''), h('span', { class: isNow ? '' : 'muted' }, `${p.start}–${p.end}`)))
+      onPick({ planId: p.id, kind: p.kind, courseId: p.courseId, labels: p.labels, text: p.text, subjectId: p.subjectId })
+    } }, h('span', { class: 'box' }, isNow ? '▶' : ''), h('span', { class: 'tag hl', style: { '--c': ctx.colorOf(p) } }),
+    h('span', { class: 'what' }, h('span', {}, t), sub && h('small', {}, sub)), h('span', { class: 'when' }, `${p.start}–${p.end}`)))
   }
   if (!plans.length) list.append(h('p', { class: 'muted' }, '오늘 계획이 없어요. 아래 기타로 골라 주세요.'))
 
@@ -30,6 +31,6 @@ export function openPicker(ctx, { title, onPick, date = ctx.date }) {
       onPick({ planId: null, ...c })
     } }, '선택')))
   }
-  other.append(h('button', { type: 'button', class: 'add', onClick: showOther }, '기타 (계획에 없던 것)'))
+  other.append(h('button', { type: 'button', class: 'line add', onClick: showOther }, '＋ 계획에 없던 것'))
   openSheet(title, [list, other])
 }

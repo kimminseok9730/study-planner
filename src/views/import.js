@@ -1,6 +1,8 @@
 import { h, openSheet, closeSheet, field, toast } from '../ui.js'
 import { recognize } from '../ocr.js'
 import { parseLectureText, mergeLectureLists, guessCourseName, guessTotal } from '../ocr-parse.js'
+import { guessSubject } from '../model.js'
+import { subjectButtons } from './courses.js'
 
 const PLATFORM_NAMES = { mimac: '대성마이맥', mega: '메가스터디', etc: '기타' }
 
@@ -49,6 +51,7 @@ function showConfirm(ctx, texts, targetId) {
   const platform = h('select', { id: 'i-platform' }, Object.entries(PLATFORM_NAMES).map(([v, t]) => h('option', { value: v }, t)))
   platform.value = target?.platform || guessPlatform(all)
   const teacher = h('input', { type: 'text', id: 'i-teacher', value: target?.teacher || '' })
+  const subject = subjectButtons(ctx, target?.subjectId || guessSubject(name.value))
   const body = h('tbody')
   const notes = h('p', { class: 'muted' })
   const err = h('p', { class: 'err', role: 'alert' })
@@ -98,7 +101,7 @@ function showConfirm(ctx, texts, targetId) {
     } else {
       const n = name.value.trim()
       if (!n) return (err.textContent = '강좌 이름을 적어 주세요')
-      await ctx.store.put('courses', { name: n, platform: platform.value, teacher: teacher.value.trim(), lectures })
+      await ctx.store.put('courses', { name: n, platform: platform.value, teacher: teacher.value.trim(), subjectId: subject.get(), lectures })
       toast(`${n} 강좌를 추가했어요`)
     }
     closeSheet(); await ctx.refresh()
@@ -106,10 +109,11 @@ function showConfirm(ctx, texts, targetId) {
 
   openSheet('읽은 결과 확인', [
     !target && field('강좌 이름', name),
-    !target && h('div', { class: 'row2' }, field('사이트', platform), field('선생님 (선택)', teacher)),
+    !target && h('div', { class: 'row2' }, field('선생님', teacher), field('사이트', platform)),
+    !target && h('div', { class: 'field' }, h('span', {}, '과목'), subject.el),
     notes,
     h('div', { class: 'tablewrap' }, h('table', { class: 'lec' }, body)),
-    h('button', { type: 'button', class: 'add', onClick: () => { rows.push({ label: '', title: '', order: 9999, include: true }); drawRows() } }, '＋ 줄 추가'),
+    h('button', { type: 'button', class: 'line add', onClick: () => { rows.push({ label: '', title: '', order: 9999, include: true }); drawRows() } }, '＋ 줄 추가'),
     err,
     h('div', { class: 'actions' }, h('button', { type: 'button', onClick: closeSheet }, '취소'), h('button', { type: 'button', class: 'primary', onClick: save }, '저장')),
   ])

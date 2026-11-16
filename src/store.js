@@ -1,6 +1,6 @@
 // Thin IndexedDB wrapper. All data stays on this device.
 
-const DEFAULT_SETTINGS = { dayStart: '06:00', dayEnd: '24:00', lastBackupAt: null, timer: null }
+const DEFAULT_SETTINGS = { dayStart: '06:00', dayEnd: '24:00', lastBackupAt: null, timer: null, subjects: null, dday: null, memos: {} }
 const LISTS = ['courses', 'plans', 'actuals']
 
 const req = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error) })
