@@ -59,3 +59,12 @@ test('text plan carried over not in backlog', () => {
 test('plan for deleted course is skipped', () => {
   assert.deepEqual(backlog([lecPlan('p', '2026-11-15', ['5'])], [], [], '2026-11-16'), [])
 })
+
+import { formatLabels } from '../src/model.js'
+test('formatLabels', () => {
+  assert.equal(formatLabels(['12', '13', '14']), '12~14강')
+  assert.equal(formatLabels(['7']), '7강')
+  assert.equal(formatLabels(['3', '5']), '3, 5강')
+  assert.equal(formatLabels(['OT', '1']), 'OT, 1강')
+  assert.equal(formatLabels([]), '')
+})

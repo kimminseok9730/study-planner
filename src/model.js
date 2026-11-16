@@ -58,3 +58,11 @@ export function backlog(plans, courses, actuals, today) {
   }
   return items
 }
+
+// ['12','13','14'] → '12~14강'; mixed or gapped → '3, 5강'
+export function formatLabels(labels) {
+  if (!labels || !labels.length) return ''
+  const nums = labels.every((l) => /^\d+$/.test(l)) ? labels.map(Number) : null
+  if (nums && nums.length > 1 && nums.every((n, i) => i === 0 || n === nums[i - 1] + 1)) return `${nums[0]}~${nums.at(-1)}강`
+  return labels.join(', ') + '강'
+}
