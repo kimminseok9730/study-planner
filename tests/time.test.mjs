@@ -20,3 +20,10 @@ test('timer same day', () => {
 test('timer under 1 minute → null', () => { assert.equal(clipTimerToDay(new Date(2026, 10, 16, 9, 0, 0), new Date(2026, 10, 16, 9, 0, 40), '24:00'), null) })
 test('timer started after day end → null', () => { assert.equal(clipTimerToDay(new Date(2026, 10, 16, 23, 30), new Date(2026, 10, 16, 23, 50), '23:00'), null) })
 test('localDate', () => { assert.equal(localDate(new Date(2026, 0, 5, 23, 59)), '2026-01-05') })
+
+import { rollDate } from '../src/time.js'
+test('rollDate moves a stale "today" view forward, keeps other days', () => {
+  assert.equal(rollDate('2026-11-16', '2026-11-16', '2026-11-17'), '2026-11-17')
+  assert.equal(rollDate('2026-11-10', '2026-11-16', '2026-11-17'), '2026-11-10')
+  assert.equal(rollDate('2026-11-16', '2026-11-16', '2026-11-16'), '2026-11-16')
+})

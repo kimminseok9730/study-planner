@@ -1,5 +1,5 @@
 import { h, toast } from '../ui.js'
-import { clipTimerToDay } from '../time.js'
+import { clipTimerToDay, localDate } from '../time.js'
 import { formatLabels } from '../model.js'
 import { openPicker } from './picker.js'
 import { confirmLectures } from './editors.js'
@@ -21,17 +21,25 @@ export async function startTimer(ctx, choice) {
   await ctx.refresh()
 }
 
+let stopping = false
 export async function stopTimer(ctx) {
-  const t = ctx.settings.timer
-  if (!t) return null
-  await ctx.store.saveSettings({ timer: null })
-  const block = clipTimerToDay(new Date(t.startedAt), new Date(), ctx.settings.dayEnd)
-  if (!block) { toast('1분 미만이라 저장하지 않았어요'); await ctx.refresh(); return null }
-  const { startedAt, ...choice } = t
-  const actual = await ctx.store.put('actuals', { ...choice, ...block, source: 'timer' })
-  if (actual.kind === 'lecture') confirmLectures(ctx, actual)
-  else { toast('기록을 저장했어요'); await ctx.refresh() }
-  return actual
+  if (stopping) return null
+  stopping = true
+  try {
+    const t = (await ctx.store.getSettings()).timer
+    if (!t) { await ctx.refresh(); return null }
+    await ctx.store.saveSettings({ timer: null })
+    // Clip at midnight, not the timetable end, so late-night study is never dropped.
+    const block = clipTimerToDay(new Date(t.startedAt), new Date(), '24:00')
+    if (!block) { toast('1분 미만이라 저장하지 않았어요'); await ctx.refresh(); return null }
+    const { startedAt, ...choice } = t
+    const actual = await ctx.store.put('actuals', { ...choice, ...block, source: 'timer' })
+    if (actual.kind === 'lecture') confirmLectures(ctx, actual)
+    else { toast('기록을 저장했어요'); await ctx.refresh() }
+    return actual
+  } finally {
+    stopping = false
+  }
 }
 
 export function renderTimerBar(root, ctx) {
@@ -40,7 +48,7 @@ export function renderTimerBar(root, ctx) {
   if (!t) {
     root.replaceChildren(h('div', { class: 'inner' },
       h('span', { class: 'muted' }, '공부를 시작할 때 누르세요'),
-      h('button', { class: 'primary', onClick: () => openPicker(ctx, { title: '무엇을 공부하나요?', onPick: (c) => startTimer(ctx, c) }) }, '▶ 공부 시작')))
+      h('button', { class: 'primary', onClick: () => openPicker(ctx, { title: '무엇을 공부하나요?', date: localDate(new Date()), onPick: (c) => startTimer(ctx, c) }) }, '▶ 공부 시작')))
     return
   }
   const clock = h('span', { class: 'clock' }, elapsed(t.startedAt))

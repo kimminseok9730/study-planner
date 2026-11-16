@@ -36,3 +36,19 @@ test('reminder', () => {
   assert.equal(needsBackupReminder(new Date(2026, 10, 8, 12).toISOString(), now), true)
   assert.equal(needsBackupReminder(new Date(2026, 10, 10, 12).toISOString(), now), false)
 })
+
+test('running timer is not exported or imported', () => {
+  const withTimer = { ...data, settings: { ...data.settings, timer: { startedAt: '2026-11-16T09:00:00.000Z', kind: 'text', text: 'x', planId: null } } }
+  const b = makeBackup(withTimer, now)
+  assert.equal(b.settings.timer, null)
+  const old = { ...b, settings: { ...b.settings, timer: { startedAt: 'x' } } }
+  assert.equal(parseBackup(JSON.stringify(old)).data.settings.timer, null)
+})
+test('items missing required fields rejected', () => {
+  const bad1 = makeBackup(data, now); bad1.plans = [{ id: 'p', date: '2026-11-16', kind: 'text' }]
+  assert.equal(parseBackup(JSON.stringify(bad1)).ok, false)
+  const bad2 = makeBackup(data, now); bad2.courses = [{ id: 'c', name: 'x' }]
+  assert.equal(parseBackup(JSON.stringify(bad2)).ok, false)
+  const bad3 = makeBackup(data, now); bad3.actuals = [{ id: 'a', date: '2026-11-16', start: '09:00', end: '10:00', kind: 'text' }]
+  assert.equal(parseBackup(JSON.stringify(bad3)).ok, false)
+})

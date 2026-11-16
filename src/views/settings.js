@@ -15,12 +15,28 @@ export function openSettings(ctx) {
   end.addEventListener('change', saveRange)
 
   const exportBtn = h('button', { class: 'primary', onClick: async () => {
-    await ctx.store.saveSettings({ lastBackupAt: new Date().toISOString() })
+    const stamp = new Date().toISOString()
     const data = await ctx.store.exportAll()
-    const blob = new Blob([JSON.stringify(makeBackup(data, new Date()), null, 1)], { type: 'application/json' })
-    const a = h('a', { href: URL.createObjectURL(blob), download: `study-planner-${localDate(new Date())}.json` })
-    document.body.append(a); a.click(); a.remove()
-    toast('백업 파일을 만들었어요. 파일 앱에 저장해 두세요.'); await ctx.refresh()
+    data.settings = { ...data.settings, lastBackupAt: stamp }
+    const name = `study-planner-${localDate(new Date())}.json`
+    const json = JSON.stringify(makeBackup(data, new Date()), null, 1)
+    const file = new File([json], name, { type: 'application/json' })
+    // iPad: the share sheet ("파일에 저장") is the reliable way to keep a file from a home-screen app.
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: '공부 기록장 백업' })
+      } catch (e) {
+        if (e?.name === 'AbortError') return toast('백업을 저장하지 않았어요')
+        return (msg.textContent = '공유 화면을 열 수 없어요. 다시 해 주세요.')
+      }
+    } else {
+      const url = URL.createObjectURL(file)
+      const a = h('a', { href: url, download: name })
+      document.body.append(a); a.click(); a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 10000)
+    }
+    await ctx.store.saveSettings({ lastBackupAt: stamp })
+    toast('백업 파일을 만들었어요. 파일 앱에 보관하세요.'); await ctx.refresh()
   } }, '백업 내보내기')
 
   const file = h('input', { type: 'file', id: 's-file', accept: 'application/json,.json', style: { display: 'none' } })
@@ -43,7 +59,7 @@ export function openSettings(ctx) {
   openSheet('설정', [
     h('div', { class: 'row2' }, field('시간표 시작', start), field('시간표 끝', end)),
     h('h3', { style: { margin: '8px 0 0', fontSize: '15px' } }, '백업'),
-    h('p', { class: 'muted' }, `데이터는 이 아이패드에만 있어요. 가끔 내보내서 파일 앱에 보관하세요. 마지막 백업: ${last}`),
+    h('p', { class: 'muted' }, `데이터는 이 아이패드에만 있어요. 홈 화면 앱과 사파리 탭은 데이터가 따로라서, 늘 홈 화면 아이콘으로 여세요. 가끔 내보내서 파일 앱에 보관하세요. 마지막 백업: ${last}`),
     h('div', { class: 'actions', style: { justifyContent: 'flex-start' } }, exportBtn, h('button', { onClick: () => file.click() }, '백업 불러오기'), file),
     confirmBox, msg,
   ])

@@ -4,10 +4,10 @@ import { blockTitle } from './day.js'
 import { toMin } from '../time.js'
 
 // "What are you doing?" — one tap on today's plan, or 기타 with a small form.
-export function openPicker(ctx, { title, onPick }) {
+export function openPicker(ctx, { title, onPick, date = ctx.date }) {
   const now = new Date()
   const nowMin = now.getHours() * 60 + now.getMinutes()
-  const plans = ctx.plans.slice().sort((a, b) => toMin(a.start) - toMin(b.start))
+  const plans = ctx.allPlans.filter((p) => p.date === date).sort((a, b) => toMin(a.start) - toMin(b.start))
   const list = h('div', { class: 'pick' })
   for (const p of plans) {
     const { title: t, sub } = blockTitle(ctx, p)

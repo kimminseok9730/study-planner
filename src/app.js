@@ -1,5 +1,5 @@
 import { openStore } from './store.js'
-import { localDate } from './time.js'
+import { localDate, rollDate } from './time.js'
 import { renderDay } from './views/day.js'
 import { renderCourses } from './views/courses.js'
 import { renderBacklog } from './views/backlog.js'
@@ -49,10 +49,17 @@ async function boot() {
     console.error(e)
     return
   }
-  // Day rolls over while the app stays open.
+  // iPad keeps the app suspended overnight: a view left on "today" moves to the new today.
+  let lastToday = localDate(new Date())
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') ctx.refresh()
+    if (document.visibilityState !== 'visible') return
+    const nowToday = localDate(new Date())
+    ctx.date = rollDate(ctx.date, lastToday, nowToday)
+    lastToday = nowToday
+    ctx.refresh()
   })
+  // Ask Safari not to evict this app's data.
+  navigator.storage?.persist?.().catch(() => {})
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {})
 }
 

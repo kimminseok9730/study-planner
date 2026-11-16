@@ -2,8 +2,16 @@ const APP = 'study-planner'
 const VERSION = 1
 const KEYS = ['courses', 'plans', 'actuals']
 
+// A running timer is never carried in a backup: restoring it later would create a huge block.
 export function makeBackup(data, now) {
-  return { app: APP, version: VERSION, exportedAt: now.toISOString(), ...data }
+  return { app: APP, version: VERSION, exportedAt: now.toISOString(), ...data, settings: { ...data.settings, timer: null } }
+}
+
+const isStr = (v) => typeof v === 'string' && v.length > 0
+const VALID = {
+  courses: (c) => isStr(c.name) && Array.isArray(c.lectures) && c.lectures.every((l) => l && isStr(l.label) && typeof l.done === 'boolean'),
+  plans: (p) => isStr(p.date) && isStr(p.start) && isStr(p.end) && (p.kind === 'text' || (p.kind === 'lecture' && Array.isArray(p.labels))),
+  actuals: (a) => isStr(a.date) && isStr(a.start) && isStr(a.end) && typeof a.minutes === 'number' && (a.kind === 'text' || a.kind === 'lecture'),
 }
 
 export function parseBackup(jsonText) {
@@ -15,10 +23,10 @@ export function parseBackup(jsonText) {
   if (b.version > VERSION) return { ok: false, error: '더 새로운 버전의 백업이에요' }
   for (const k of KEYS) {
     if (!Array.isArray(b[k])) return notOurs
-    if (!b[k].every((x) => x && typeof x.id === 'string')) return notOurs
+    if (!b[k].every((x) => x && typeof x.id === 'string' && VALID[k](x))) return notOurs
   }
   if (!b.settings || typeof b.settings !== 'object') return notOurs
-  return { ok: true, data: { courses: b.courses, plans: b.plans, actuals: b.actuals, settings: b.settings } }
+  return { ok: true, data: { courses: b.courses, plans: b.plans, actuals: b.actuals, settings: { ...b.settings, timer: null } } }
 }
 
 export function needsBackupReminder(lastBackupAt, now) {

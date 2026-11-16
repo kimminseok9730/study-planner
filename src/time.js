@@ -52,3 +52,8 @@ export function clipTimerToDay(startedAt, now, dayEnd) {
   if (endMin <= startMin) return null
   return { date, start: toHHMM(startMin), end: toHHMM(endMin), minutes: endMin - startMin }
 }
+
+// When the app wakes up on a new day, move a view that was showing "today" to the new today.
+export function rollDate(viewDate, lastToday, nowToday) {
+  return viewDate === lastToday && lastToday !== nowToday ? nowToday : viewDate
+}
