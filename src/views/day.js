@@ -19,7 +19,7 @@ const hm = (min) => `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')
 export function blockTitle(ctx, b) {
   if (b.kind === 'lecture') {
     const c = ctx.courseById(b.courseId)
-    return { title: c ? c.name : '삭제된 강좌', sub: formatLabels(b.labels) }
+    return { title: c ? c.name : '삭제된 강좌', sub: formatLabels(b.labels, c) }
   }
   return { title: b.text || '할 일', sub: '' }
 }

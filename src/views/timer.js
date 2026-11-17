@@ -8,7 +8,7 @@ import { photoBox } from './photo.js'
 let tick = null
 
 function label(ctx, t) {
-  if (t.kind === 'lecture') return `${ctx.courseById(t.courseId)?.name || '강좌'} ${formatLabels(t.labels)}`
+  if (t.kind === 'lecture') { const c = ctx.courseById(t.courseId); return `${c?.name || '강좌'} ${formatLabels(t.labels, c)}` }
   return t.text || '공부'
 }
 const pad = (n) => String(n).padStart(2, '0')

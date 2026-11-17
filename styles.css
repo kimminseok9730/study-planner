@@ -202,3 +202,15 @@ tr.flag td { background: color-mix(in srgb, #ffd866 var(--hl), var(--paper)); }
 .cal .ev { font-size: 11px; line-height: 15px; padding: 0 3px; white-space: nowrap; overflow: hidden; text-overflow: clip; display: block; }
 .cal .ev.done { text-decoration: line-through; color: var(--pencil); background: transparent; }
 .cal .more { font: 400 10px var(--mono); color: var(--pencil); padding-left: 3px; }
+
+/* books & goals */
+.teach small.goal { color: var(--ink); font-size: 12px; }
+.pbar { height: 12px; border: 1px solid var(--ink); margin-top: 6px; max-width: 260px; }
+.pbar.big { height: 16px; max-width: none; margin: 0; width: 100%; }
+.pbar i { display: block; height: 100%; }
+.seg.range { align-items: center; gap: 6px; }
+.seg.range input { flex: 1; min-width: 0; text-align: center; }
+.seg.range span { font: 400 14px var(--mono); color: var(--pencil); }
+.seg.range button { flex: none; margin-left: 4px; }
+.subj.days button { min-width: 38px; padding: 4px 6px; }
+.subj.days button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }

@@ -10,7 +10,7 @@ export function renderBacklog(ctx) {
   const list = h('div', {})
   for (const it of items) {
     const title = it.kind === 'lecture' ? ctx.courseById(it.courseId)?.name : it.text
-    const sub = it.kind === 'lecture' ? formatLabels(it.labels) : ''
+    const sub = it.kind === 'lecture' ? formatLabels(it.labels, ctx.courseById(it.courseId)) : ''
     const from = ctx.allPlans.find((p) => p.id === it.fromPlanId)
     list.append(h('button', { class: 'line late', onClick: () => openPlanEditor(ctx, { ...nextSlot(ctx), kind: it.kind, courseId: it.courseId, labels: it.labels, text: it.text, subjectId: from?.subjectId, fromPlanId: it.fromPlanId }) },
       h('span', { class: 'box' }, '→'),

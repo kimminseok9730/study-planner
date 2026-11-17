@@ -38,7 +38,7 @@ export function openStats(ctx) {
       cell('TOTAL', hm(sum.total)),
       cell('하루 평균', hm(sum.avg), `${sum.studiedDays}일 공부`),
       cell('달성', sum.percent == null ? '–' : `${sum.percent}%`),
-      cell('들은 강의', `${lecturesDone(ctx.courses, dates, ctx.settings.dayEnd)}강`),
+      cell('끝낸 강 · 단원', `${lecturesDone(ctx.courses, dates, ctx.settings.dayEnd)}강`),
       cell('연속', `${streak(ctx.allActuals, today)}일`))
 
     // One bar per day, stacked in subject colours. Tap a bar to open that day.

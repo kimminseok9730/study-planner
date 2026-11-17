@@ -6,6 +6,7 @@ import { renderCourses } from './views/courses.js'
 import { renderBacklog } from './views/backlog.js'
 import { renderPhotos } from './views/dayphoto.js'
 import { renderTodos } from './views/todos.js'
+import { renderQuota } from './views/quota.js'
 import { urgentCount } from './todos.js'
 import { renderTimerBar } from './views/timer.js'
 import { h } from './ui.js'
@@ -59,7 +60,7 @@ function render() {
   if (ctx.tab === 'todo') {
     root.replaceChildren(h('div', { class: 'page' }, tabs, renderTodos(ctx)))
   } else {
-    const left = h('div', { class: 'col' }, renderPlans(ctx), renderBacklog(ctx), renderPhotos(ctx), renderCourses(ctx))
+    const left = h('div', { class: 'col' }, renderQuota(ctx), renderPlans(ctx), renderBacklog(ctx), renderPhotos(ctx), renderCourses(ctx))
     const right = h('div', { class: 'col' }, renderTimeTable(ctx))
     root.replaceChildren(h('div', { class: 'page' }, tabs, ...renderHead(ctx), h('div', { class: 'cols' }, left, right)))
   }

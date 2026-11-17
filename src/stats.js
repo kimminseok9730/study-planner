@@ -67,6 +67,6 @@ export function streak(actuals, today) {
 export function lecturesDone(courses, dates, dayEnd) {
   const set = new Set(dates)
   let n = 0
-  for (const c of courses) for (const l of c.lectures) if (l.done && l.doneAt && set.has(studyDate(new Date(l.doneAt), dayEnd))) n++
+  for (const c of courses) if (c.unit !== 'page') for (const l of c.lectures) if (l.done && l.doneAt && set.has(studyDate(new Date(l.doneAt), dayEnd))) n++
   return n
 }

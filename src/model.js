@@ -1,4 +1,4 @@
-import { duration } from './time.js'
+import { duration, studyDate, localDate } from './time.js'
 
 export function courseProgress(course) {
   const total = course.lectures.length
@@ -59,12 +59,58 @@ export function backlog(plans, courses, actuals, today) {
   return items
 }
 
-// ['12','13','14'] → '12~14강'; mixed or gapped → '3, 5강'
-export function formatLabels(labels) {
+// What one item of a course is called: 강 for 인강, 쪽 or 단원/회 for a book.
+export function unitWord(course) {
+  if (course?.kind !== 'book') return '강'
+  return course.unit === 'page' ? '쪽' : course.unitName || '단원'
+}
+
+// ['12','13','14'] → '12~14강' (or 'p.12~14', '12~14회'); mixed or gapped → '3, 5강'
+export function formatLabels(labels, course) {
   if (!labels || !labels.length) return ''
   const nums = labels.every((l) => /^\d+$/.test(l)) ? labels.map(Number) : null
-  if (nums && nums.length > 1 && nums.every((n, i) => i === 0 || n === nums[i - 1] + 1)) return `${nums[0]}~${nums.at(-1)}강`
-  return labels.join(', ') + '강'
+  const run = nums && nums.length > 1 && nums.every((n, i) => i === 0 || n === nums[i - 1] + 1)
+  const body = run ? `${nums[0]}~${nums.at(-1)}` : labels.join(', ')
+  return course?.kind === 'book' && course.unit === 'page' ? `p.${body}` : body + unitWord(course)
+}
+
+// One item per page from `from` to `to`, keeping the done marks of pages already there.
+export function pageItems(from, to, existing = []) {
+  const had = new Map(existing.map((l) => [l.label, l]))
+  const out = []
+  for (let p = from; p <= to; p++) out.push(had.get(String(p)) || { label: String(p), order: p, done: false })
+  return out
+}
+
+// Auto schedule toward course.goal = { end: 'YYYY-MM-DD', days: [weekday 0–6], setAt?: ISO time the goal was set }.
+// What is left (counting what was finished today) is spread evenly over the study days from today to the end.
+export function courseSchedule(course, today, dayEnd) {
+  const g = course.goal
+  if (!g?.end) return null
+  const items = course.lectures.slice().sort((a, b) => a.order - b.order)
+  if (!items.length) return { status: 'empty' }
+  const doneDay = (l) => (l.doneAt ? studyDate(new Date(l.doneAt), dayEnd) : '')
+  // Done before today, or ticked off before the goal was set (setting the course up), is not part of the plan.
+  const pending = items.filter((l) => !l.done || (doneDay(l) >= today && !(g.setAt && l.doneAt <= g.setAt)))
+  const remaining = items.filter((l) => !l.done).length
+  if (!remaining) return { status: 'finished' }
+  const days = g.days?.length ? g.days : [0, 1, 2, 3, 4, 5, 6]
+  const [y, m, d] = today.split('-').map(Number)
+  const study = []
+  for (let i = 0; ; i++) {
+    const dt = new Date(y, m - 1, d + i)
+    const key = localDate(dt)
+    if (key > g.end) break
+    if (days.includes(dt.getDay())) study.push(key)
+  }
+  if (!study.length) return { status: 'overdue', remaining, end: g.end }
+  const perDay = Math.ceil(pending.length / study.length)
+  const share = study[0] === today ? pending.slice(0, perDay) : []
+  return {
+    status: 'ok', perDay, remaining, daysLeft: study.length, end: g.end,
+    today: share.map((l) => l.label), doneToday: share.filter((l) => l.done).length,
+    next: study[0] === today ? study[1] || null : study[0],
+  }
 }
 
 // ── Subjects, plan status, 10-minute time table ──
