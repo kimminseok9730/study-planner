@@ -1,6 +1,33 @@
 // STATS: week or month at a glance — time per day, per subject, achievement, streak.
 import { h, openSheet, closeSheet } from '../ui.js'
 import { weekDates, monthDates, shiftPeriod, dayRows, summarize, streak, lecturesDone } from '../stats.js'
+import { monthGrid } from '../todos.js'
+
+// Ink density for a day's study time: none, under 1h, 1–2h, 2–4h, 4–6h, 6h+.
+const LEVELS = [[0, '0%'], [1, '14%'], [60, '30%'], [120, '48%'], [240, '68%'], [360, '86%']]
+const level = (min) => LEVELS.reduce((lv, [from], i) => (min >= from ? i : lv), 0)
+
+// Month calendar of study time. In week view the week's days get a dark border.
+function heatCalendar(ctx, anchor, inPeriod, today) {
+  const weekStart = ctx.settings.weekStart ?? 0
+  const cells = monthGrid(anchor, [], weekStart).flat()
+  const rows = new Map(dayRows(cells.map((c) => c.date), ctx.allActuals, ctx.allPlans, ctx.courses).map((r) => [r.date, r]))
+  const order = Array.from({ length: 7 }, (_, i) => (i + weekStart) % 7)
+  return h('div', {},
+    h('div', { class: 'heat' },
+      order.map((i) => h('span', { class: 'wd' }, WD[i])),
+      cells.map((c) => {
+        const r = rows.get(c.date)
+        const lv = level(r.minutes)
+        return h('button', { class: (c.inMonth ? '' : 'out') + (c.date === today ? ' today' : '') + (inPeriod.has(c.date) ? ' inweek' : '') + (lv >= 3 ? ' dark' : ''),
+          style: { '--lv': LEVELS[lv][1] }, disabled: !c.inMonth || c.date > today, 'aria-label': `${md(c.date)} ${wd(c.date)} ${hm(r.minutes)}`,
+          onClick: () => { closeSheet(); ctx.setDate(c.date) } },
+          h('span', { class: 'n' }, Number(c.date.slice(8))),
+          h('span', { class: 't' }, r.minutes ? hm(r.minutes) : ''),
+          r.parts.length > 0 && h('span', { class: 'strip' }, r.parts.map((p) => h('i', { class: 'hl', style: { '--c': ctx.subjectById(p.subjectId).color, flexGrow: String(p.minutes) } }))))
+      })),
+    h('div', { class: 'heatlegend' }, '적게', LEVELS.map(([, v]) => h('i', { style: { '--lv': v } })), '많이'))
+}
 
 const WD = ['일', '월', '화', '수', '목', '금', '토']
 const hm = (min) => `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`
@@ -38,7 +65,7 @@ export function openStats(ctx) {
       cell('TOTAL', hm(sum.total)),
       cell('하루 평균', hm(sum.avg), `${sum.studiedDays}일 공부`),
       cell('달성', sum.percent == null ? '–' : `${sum.percent}%`),
-      cell('끝낸 강 · 단원', `${lecturesDone(ctx.courses, dates, ctx.settings.dayEnd)}강`),
+      cell('끝낸 강 · 단원', `${lecturesDone(ctx.courses, dates, ctx.settings.dayEnd)}개`),
       cell('연속', `${streak(ctx.allActuals, today)}일`))
 
     // One bar per day, stacked in subject colours. Tap a bar to open that day.
@@ -66,6 +93,8 @@ export function openStats(ctx) {
 
     body.replaceChildren(nav, nums,
       compare && h('p', { class: 'muted' }, compare + (sum.best ? ` · 가장 많이 한 날 ${md(sum.best.date)} ${wd(sum.best.date)} ${hm(sum.best.minutes)}` : '')),
+      h('h3', { class: 'sec' }, h('span', {}, 'CALENDAR'), h('span', {}, `${Number(anchor.slice(5, 7))}월 · 진할수록 많이 · 아래 띠 = 과목`)),
+      heatCalendar(ctx, anchor, new Set(mode === 'week' ? dates : []), today),
       h('h3', { class: 'sec' }, h('span', {}, 'DAILY'), h('span', {}, `막대를 누르면 그날로 · 맨 위 = ${hm(top)}`)),
       chart,
       h('h3', { class: 'sec' }, h('span', {}, 'SUBJECT'), h('span', {}, '과목별 시간')),

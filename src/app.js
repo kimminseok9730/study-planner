@@ -5,7 +5,7 @@ import { renderHead, renderPlans, renderTimeTable } from './views/day.js'
 import { renderCourses } from './views/courses.js'
 import { renderBacklog } from './views/backlog.js'
 import { renderPhotos } from './views/dayphoto.js'
-import { renderTodos } from './views/todos.js'
+import { renderTodos, todoPrefs } from './views/todos.js'
 import { renderQuota } from './views/quota.js'
 import { urgentCount } from './todos.js'
 import { renderTimerBar } from './views/timer.js'
@@ -54,7 +54,7 @@ const ctx = {
 
 function render() {
   const keepFocus = document.activeElement?.id === 'memo'
-  const urgent = urgentCount(ctx.todos, ctx.today())
+  const urgent = urgentCount(ctx.todos, ctx.today(), todoPrefs(ctx).urgentDays)
   const tab = (id, label, extra) => h('button', { role: 'tab', 'aria-selected': String(ctx.tab === id), onClick: () => { ctx.tab = id; render(); window.scrollTo(0, 0) } }, label, extra)
   const tabs = h('div', { class: 'tabs', role: 'tablist' }, tab('day', 'DAILY'), tab('todo', 'TO DO', urgent ? h('i', { 'aria-label': `급한 것 ${urgent}개` }, urgent) : null))
   if (ctx.tab === 'todo') {

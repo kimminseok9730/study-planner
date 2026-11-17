@@ -215,14 +215,42 @@ tr.flag td { background: color-mix(in srgb, #ffd866 var(--hl), var(--paper)); }
 .subj.days button { min-width: 38px; padding: 4px 6px; }
 .subj.days button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
-/* calendar: a sheet you can throw sideways */
-.calwrap { overflow: hidden; padding: 6px 4px 14px; margin: -6px -4px -14px; }
-.cal { background: var(--paper); touch-action: pan-y; user-select: none; -webkit-user-select: none; transform-origin: 50% 120%; will-change: transform; }
-.cal.dragging { box-shadow: 0 14px 30px rgba(20, 19, 17, .22); cursor: grabbing; }
-.cal.enter-next { animation: cal-in-next .5s cubic-bezier(.18,1.35,.4,1) both; }
-.cal.enter-prev { animation: cal-in-prev .5s cubic-bezier(.18,1.35,.4,1) both; }
-@keyframes cal-in-next { from { transform: translateX(70%) rotate(6deg); opacity: 0; } 60% { opacity: 1; } to { transform: none; opacity: 1; } }
-@keyframes cal-in-prev { from { transform: translateX(-70%) rotate(-6deg); opacity: 0; } 60% { opacity: 1; } to { transform: none; opacity: 1; } }
+/* calendar: a desk-calendar sheet you peel off; the next month lies underneath */
+.calwrap { position: relative; overflow: hidden; }
+.cal { background: var(--paper); touch-action: pan-y; user-select: none; -webkit-user-select: none; position: relative; z-index: 1; }
+.cal.under { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.flap { position: absolute; top: 0; bottom: 0; z-index: 3; pointer-events: none; opacity: 0;
+  --crease: color-mix(in srgb, var(--ink) 22%, var(--paper)); --sheen: color-mix(in srgb, #fff 35%, var(--paper)); --back: color-mix(in srgb, var(--ink) 7%, var(--paper)); }
+[data-dir=next] .flap { background: linear-gradient(to left, var(--crease) 0%, var(--paper) 9%, var(--sheen) 42%, var(--back) 100%);
+  border-radius: calc(2% + var(--lift, 0) * 26%) 0 0 calc(2% + var(--lift, 0) * 26%) / 4% 0 0 4%;
+  box-shadow: -10px 4px 22px rgba(20, 19, 17, calc(.10 + var(--lift, 0) * .22)); }
+[data-dir=prev] .flap { background: linear-gradient(to right, var(--crease) 0%, var(--paper) 9%, var(--sheen) 42%, var(--back) 100%);
+  border-radius: 0 calc(2% + var(--lift, 0) * 26%) calc(2% + var(--lift, 0) * 26%) 0 / 0 4% 4% 0;
+  box-shadow: 10px 4px 22px rgba(20, 19, 17, calc(.10 + var(--lift, 0) * .22)); }
+.fold-shade { position: absolute; top: 0; bottom: 0; width: 46px; z-index: 2; pointer-events: none; opacity: 0; }
+[data-dir=next] .fold-shade { background: linear-gradient(to right, rgba(20, 19, 17, .28), transparent); }
+[data-dir=prev] .fold-shade { background: linear-gradient(to left, rgba(20, 19, 17, .28), transparent); }
+.cal .ev.ghost { background: transparent; color: var(--pencil); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--c) 80%, var(--paper)); }
+.cal .wd.sat { color: #4a6fd1; }
 .calbox .statnav b.pop { animation: cal-pop .45s cubic-bezier(.2,1.6,.4,1) both; display: inline-block; }
 @keyframes cal-pop { from { transform: scale(1.5); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .cal.enter-next, .cal.enter-prev, .calbox .statnav b.pop { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .calbox .statnav b.pop { animation: none; } }
+.todo .what small.rep { color: var(--ink); font: 400 12px var(--mono); }
+h3.sec .icon.sm { min-height: 0; min-width: 0; padding: 0 0 0 10px; font-size: 15px; line-height: 1; vertical-align: -1px; }
+p.hint { margin: 6px 0 0; font-size: 12px; }
+
+/* STATS calendar: study time as ink density */
+.heat { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.heat .wd { font: 600 11px var(--hand); color: var(--pencil); text-align: center; }
+.heat button { min-height: 0; aspect-ratio: 1 / .82; padding: 3px 4px; border: 1px solid var(--rule); display: flex; flex-direction: column; justify-content: space-between; text-align: left;
+  background: color-mix(in srgb, var(--ink) var(--lv, 0%), var(--paper)); color: var(--ink); position: relative; overflow: hidden; }
+.heat button.dark { color: var(--paper); }
+.heat button.out { visibility: hidden; }
+.heat button.today { outline: 2px solid var(--ink); outline-offset: 1px; }
+.heat button.inweek { border-color: var(--ink); }
+.heat .n { font: 600 11px var(--mono); }
+.heat .t { font: 600 12px var(--mono); align-self: flex-end; }
+.heat .strip { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; display: flex; }
+.heat .strip i { display: block; height: 100%; }
+.heatlegend { display: flex; align-items: center; gap: 4px; justify-content: flex-end; font-size: 12px; color: var(--pencil); }
+.heatlegend i { width: 14px; height: 14px; border: 1px solid var(--rule); background: color-mix(in srgb, var(--ink) var(--lv), var(--paper)); }
