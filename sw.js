@@ -1,11 +1,11 @@
 // App shell cache. Bump VERSION when shipping changes.
-const VERSION = 'cache-v2'
+const VERSION = 'cache-v3'
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
-  'src/app.js', 'src/ui.js', 'src/time.js', 'src/model.js', 'src/backup.js', 'src/ocr-parse.js', 'src/ocr.js', 'src/store.js',
+  'src/app.js', 'src/ui.js', 'src/time.js', 'src/model.js', 'src/backup.js', 'src/ocr-parse.js', 'src/ocr.js', 'src/store.js', 'src/stats.js',
   'src/views/day.js', 'src/views/editors.js', 'src/views/picker.js', 'src/views/timer.js',
-  'src/views/courses.js', 'src/views/photo.js', 'src/views/backlog.js', 'src/views/settings.js', 'src/views/import.js',
+  'src/views/courses.js', 'src/views/photo.js', 'src/views/backlog.js', 'src/views/settings.js', 'src/views/import.js', 'src/views/dayphoto.js', 'src/views/stats.js',
 ]
 
 self.addEventListener('install', (e) => {

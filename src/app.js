@@ -4,6 +4,7 @@ import { DEFAULT_SUBJECTS, subjectOf, guessSubject } from './model.js'
 import { renderHead, renderPlans, renderTimeTable } from './views/day.js'
 import { renderCourses } from './views/courses.js'
 import { renderBacklog } from './views/backlog.js'
+import { renderPhotos } from './views/dayphoto.js'
 import { renderTimerBar } from './views/timer.js'
 import { h } from './ui.js'
 
@@ -18,6 +19,7 @@ const ctx = {
   courses: [],
   plans: [],   // plans for ctx.date
   actuals: [], // actuals for ctx.date
+  photos: [],  // photos for ctx.date
   allPlans: [],
   allActuals: [],
   courseById(id) { return ctx.courses.find((c) => c.id === id) },
@@ -40,13 +42,14 @@ const ctx = {
     ctx.courses.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
     ctx.plans = ctx.allPlans.filter((p) => p.date === ctx.date)
     ctx.actuals = ctx.allActuals.filter((a) => a.date === ctx.date)
+    ctx.photos = (await s.getByDate('photos', ctx.date)).sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
     render()
   },
 }
 
 function render() {
   const keepFocus = document.activeElement?.id === 'memo'
-  const left = h('div', { class: 'col' }, renderPlans(ctx), renderBacklog(ctx), renderCourses(ctx))
+  const left = h('div', { class: 'col' }, renderPlans(ctx), renderBacklog(ctx), renderPhotos(ctx), renderCourses(ctx))
   const right = h('div', { class: 'col' }, renderTimeTable(ctx))
   root.replaceChildren(h('div', { class: 'page' }, ...renderHead(ctx), h('div', { class: 'cols' }, left, right)))
   renderTimerBar(timerRoot, ctx)

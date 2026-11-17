@@ -37,5 +37,5 @@ test('replaceAll and exportAll round trip', async () => {
   const s = await fresh()
   const data = { courses: [{ id: 'c', name: 'a', platform: 'etc', lectures: [] }], plans: [], actuals: [], settings: { dayStart: '07:00', dayEnd: '24:00', lastBackupAt: null, timer: null, subjects: null, dday: null, memos: {} } }
   await s.replaceAll(data)
-  assert.deepEqual(await s.exportAll(), data)
+  assert.deepEqual(await s.exportAll(), { ...data, photos: [] })
 })

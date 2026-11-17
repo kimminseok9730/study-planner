@@ -25,8 +25,10 @@ export function parseBackup(jsonText) {
     if (!Array.isArray(b[k])) return notOurs
     if (!b[k].every((x) => x && typeof x.id === 'string' && VALID[k](x))) return notOurs
   }
+  const photos = b.photos ?? [] // backups made before photos existed have none
+  if (!Array.isArray(photos) || !photos.every((x) => x && typeof x.id === 'string' && isStr(x.date) && typeof x.data === 'string' && x.data.startsWith('data:image/'))) return notOurs
   if (!b.settings || typeof b.settings !== 'object') return notOurs
-  return { ok: true, data: { courses: b.courses, plans: b.plans, actuals: b.actuals, settings: { ...b.settings, timer: null } } }
+  return { ok: true, data: { courses: b.courses, plans: b.plans, actuals: b.actuals, photos, settings: { ...b.settings, timer: null } } }
 }
 
 export function needsBackupReminder(lastBackupAt, now) {

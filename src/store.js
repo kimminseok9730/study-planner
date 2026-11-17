@@ -1,20 +1,24 @@
 // Thin IndexedDB wrapper. All data stays on this device.
 
 const DEFAULT_SETTINGS = { dayStart: '04:00', dayEnd: '26:00', lastBackupAt: null, timer: null, subjects: null, dday: null, memos: {} }
-const LISTS = ['courses', 'plans', 'actuals']
+const LISTS = ['courses', 'plans', 'actuals', 'photos']
 
 const req = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error) })
 const done = (tx) => new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('aborted')) })
 const newId = () => (globalThis.crypto?.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2))
 
 export async function openStore(name = 'study-planner') {
-  const open = indexedDB.open(name, 1)
-  open.onupgradeneeded = () => {
+  const open = indexedDB.open(name, 2)
+  open.onupgradeneeded = (e) => {
     const db = open.result
-    db.createObjectStore('courses', { keyPath: 'id' })
-    db.createObjectStore('plans', { keyPath: 'id' }).createIndex('date', 'date')
-    db.createObjectStore('actuals', { keyPath: 'id' }).createIndex('date', 'date')
-    db.createObjectStore('settings')
+    if (e.oldVersion < 1) {
+      db.createObjectStore('courses', { keyPath: 'id' })
+      db.createObjectStore('plans', { keyPath: 'id' }).createIndex('date', 'date')
+      db.createObjectStore('actuals', { keyPath: 'id' }).createIndex('date', 'date')
+      db.createObjectStore('settings')
+    }
+    // v2: photos of the day's study
+    if (e.oldVersion < 2) db.createObjectStore('photos', { keyPath: 'id' }).createIndex('date', 'date')
   }
   const db = await req(open)
   const store = (s, mode = 'readonly') => db.transaction(s, mode).objectStore(s)
@@ -45,7 +49,7 @@ export async function openStore(name = 'study-planner') {
         for (const s of LISTS) {
           const os = tx.objectStore(s)
           os.clear()
-          for (const item of data[s]) os.put(item) // throws on missing id → abort
+          for (const item of data[s] || []) os.put(item) // throws on missing id → abort
         }
         tx.objectStore('settings').put({ ...DEFAULT_SETTINGS, ...data.settings }, 'main')
       } catch (e) {
@@ -56,8 +60,8 @@ export async function openStore(name = 'study-planner') {
       await finished
     },
     async exportAll() {
-      const [courses, plans, actuals, settings] = await Promise.all([...LISTS.map(api.getAll), api.getSettings()])
-      return { courses, plans, actuals, settings }
+      const [courses, plans, actuals, photos, settings] = await Promise.all([...LISTS.map(api.getAll), api.getSettings()])
+      return { courses, plans, actuals, photos, settings }
     },
   }
   return api

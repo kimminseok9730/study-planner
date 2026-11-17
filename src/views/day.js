@@ -5,6 +5,7 @@ import { needsBackupReminder } from '../backup.js'
 import { openPlanEditor, openActualEditor } from './editors.js'
 import { openPicker } from './picker.js'
 import { openSettings } from './settings.js'
+import { openStats } from './stats.js'
 
 const WD = ['일', '월', '화', '수', '목', '금', '토']
 const MARK = { done: '○', partial: '△', missed: '✕', todo: '' }
@@ -43,7 +44,8 @@ export function renderHead(ctx) {
     h('div', {}, h('small', {}, 'TOTAL'), h('b', {}, hm(ach.actualMin))),
     h('div', {}, h('small', {}, `달성 · 계획 ${hm(ach.plannedMin)}`), h('b', {}, `${ach.percent}%`)),
     h('div', { class: 'memo' }, h('small', {}, 'MEMO'), memo),
-    h('div', {}, h('button', { class: 'ghost icon', 'aria-label': '설정', onClick: () => openSettings(ctx) }, '⚙︎')))
+    h('div', { class: 'tools' }, h('button', { class: 'ghost', onClick: () => openStats(ctx) }, '통계'),
+      h('button', { class: 'ghost icon', 'aria-label': '설정', onClick: () => openSettings(ctx) }, '⚙︎')))
 
   const out = [head]
   const hasData = ctx.courses.length || ctx.allPlans.length || ctx.allActuals.length

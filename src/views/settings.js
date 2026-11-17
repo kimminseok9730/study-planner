@@ -20,7 +20,7 @@ export function openSettings(ctx) {
     const data = await ctx.store.exportAll()
     data.settings = { ...data.settings, lastBackupAt: stamp }
     const name = `study-planner-${localDate(new Date())}.json`
-    const json = JSON.stringify(makeBackup(data, new Date()), null, 1)
+    const json = JSON.stringify(makeBackup(data, new Date()))
     const file = new File([json], name, { type: 'application/json' })
     // iPad: the share sheet ("파일에 저장") is the reliable way to keep a file from a home-screen app.
     if (navigator.canShare?.({ files: [file] })) {
@@ -49,7 +49,7 @@ export function openSettings(ctx) {
     if (!r.ok) return (msg.textContent = r.error)
     msg.textContent = ''
     confirmBox.replaceChildren(h('div', { class: 'banner' },
-      h('span', {}, `강좌 ${r.data.courses.length}개, 계획 ${r.data.plans.length}개, 기록 ${r.data.actuals.length}개로 지금 데이터를 바꿀까요?`),
+      h('span', {}, `강좌 ${r.data.courses.length}개, 계획 ${r.data.plans.length}개, 기록 ${r.data.actuals.length}개, 사진 ${r.data.photos.length}장으로 지금 데이터를 바꿀까요?`),
       h('button', { class: 'danger', onClick: async () => {
         await ctx.store.replaceAll(r.data)
         closeSheet(); toast('백업을 불러왔어요'); await ctx.refresh()
