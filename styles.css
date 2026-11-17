@@ -173,7 +173,7 @@ tr.flag td { background: color-mix(in srgb, #ffd866 var(--hl), var(--paper)); }
 .tabs i { font-style: normal; letter-spacing: 0; background: var(--danger); color: var(--paper); min-width: 18px; height: 18px; line-height: 18px; text-align: center; padding: 0 4px; font-size: 11px; }
 
 /* TO DO */
-.todos { display: flex; flex-direction: column; gap: 22px; max-width: 760px; width: 100%; }
+.todos { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
 .todoadd { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: 10px; align-items: end; margin-top: 10px; }
 @media (max-width: 560px) { .todoadd { grid-template-columns: minmax(0, 1fr) auto; } .todoadd input[type=text] { grid-column: 1 / -1; } }
 .todo { display: grid; grid-template-columns: 26px 12px minmax(0, 1fr) auto; gap: 9px; align-items: center; border-bottom: 1px solid var(--rule); min-height: 48px; }
@@ -184,3 +184,21 @@ tr.flag td { background: color-mix(in srgb, #ffd866 var(--hl), var(--paper)); }
 .todo .when b { color: var(--ink); font-weight: 600; font-size: 13px; }
 .todo.late .when b { color: var(--danger); }
 .todo.done .what > span { text-decoration: line-through; text-decoration-color: var(--pencil); color: var(--pencil); }
+
+/* TO DO: list on the left, month calendar on the right (calendar first when stacked) */
+.todopage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 26px; align-items: start; }
+@media (max-width: 860px) { .todopage { grid-template-columns: 1fr; } .todopage .calbox { order: -1; } }
+.calbox { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.calbox .statnav b { min-width: 86px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1.5px solid var(--ink); border-left: 1px solid var(--rule); }
+.cal .wd { font: 600 11px var(--hand); color: var(--pencil); text-align: center; padding: 3px 0; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--ink); }
+.cal .wd.sun { color: var(--danger); }
+.cal .day { border: 0; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); background: transparent; padding: 3px 3px 4px; min-height: 84px; display: flex; flex-direction: column; align-items: stretch; gap: 2px; text-align: left; min-width: 0; }
+.cal .day .n { font: 600 12px var(--mono); align-self: flex-start; padding: 1px 4px; }
+.cal .day.out .n { color: var(--rule); }
+.cal .day.out .ev { opacity: .45; }
+.cal .day.today .n { background: var(--ink); color: var(--paper); }
+.cal .day.picked { outline: 2px solid var(--ink); outline-offset: -2px; }
+.cal .ev { font-size: 11px; line-height: 15px; padding: 0 3px; white-space: nowrap; overflow: hidden; text-overflow: clip; display: block; }
+.cal .ev.done { text-decoration: line-through; color: var(--pencil); background: transparent; }
+.cal .more { font: 400 10px var(--mono); color: var(--pencil); padding-left: 3px; }

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { groupTodos, dueLabel, urgentCount, validateTodo } from '../src/todos.js'
+import { groupTodos, dueLabel, urgentCount, validateTodo, monthGrid } from '../src/todos.js'
 import { openStore } from '../src/store.js'
 import { makeBackup, parseBackup } from '../src/backup.js'
 
@@ -64,4 +64,24 @@ test('todos are stored, exported and restored; old backups have none', async () 
   assert.equal(parseBackup(JSON.stringify(makeBackup({ ...all, todos: [{ id: 'x', done: false }] }, now))).ok, false)
   await s.replaceAll({ courses: [], plans: [], actuals: [], settings: {} })
   assert.deepEqual(await s.getAll('todos'), [])
+})
+
+test('monthGrid: whole weeks from Sunday, days outside the month marked, todos on their due date', () => {
+  const g = monthGrid('2026-11-17', todos)
+  assert.equal(g.length, 5) // Nov 2026: Sun 1st … Mon 30th
+  assert.ok(g.every((w) => w.length === 7))
+  assert.deepEqual(g[0][0], { date: '2026-11-01', inMonth: true, items: [] })
+  assert.equal(g[4][1].date, '2026-11-30')
+  assert.deepEqual(g[4][2], { date: '2026-12-01', inMonth: false, items: [] })
+  const day = (d) => g.flat().find((c) => c.date === d)
+  assert.deepEqual(day('2026-11-20').items.map((t) => t.id), ['a'])
+  assert.deepEqual(day('2026-11-16').items.map((t) => t.id), ['f']) // finished ones stay on the calendar
+  const feb = monthGrid('2026-02-10', [])
+  assert.equal(feb.length, 4); assert.equal(feb[0][0].date, '2026-02-01'); assert.equal(feb[3][6].date, '2026-02-28')
+  const aug = monthGrid('2026-08-05', [])
+  assert.equal(aug.length, 6); assert.equal(aug[0][0].date, '2026-07-26'); assert.equal(aug[0][6].date, '2026-08-01')
+})
+test('monthGrid puts open items before finished ones within a day', () => {
+  const two = [{ id: 'x', title: 'a', due: '2026-11-05', done: true }, { id: 'y', title: 'b', due: '2026-11-05', done: false }]
+  assert.deepEqual(monthGrid('2026-11-01', two).flat().find((c) => c.date === '2026-11-05').items.map((t) => t.id), ['y', 'x'])
 })

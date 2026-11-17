@@ -45,3 +45,21 @@ export function validateTodo(t) {
   }
   return null
 }
+
+// Calendar rows for the month holding `date`: whole weeks, Sunday first. Each cell carries the todos due that day.
+export function monthGrid(date, todos) {
+  const [y, m] = date.split('-').map(Number)
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const first = new Date(y, m - 1, 1)
+  const last = new Date(y, m, 0)
+  const weeks = []
+  for (let d = new Date(y, m - 1, 1 - first.getDay()); d <= last; ) {
+    const week = []
+    for (let i = 0; i < 7; i++, d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+      const key = iso(d)
+      week.push({ date: key, inMonth: d.getMonth() === m - 1, items: todos.filter((t) => t.due === key).sort((a, b) => Number(a.done) - Number(b.done)) })
+    }
+    weeks.push(week)
+  }
+  return weeks
+}
