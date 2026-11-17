@@ -13,7 +13,7 @@ const now = new Date(2026, 10, 16, 12)
 test('round trip', () => {
   const r = parseBackup(JSON.stringify(makeBackup(data, now)))
   assert.equal(r.ok, true)
-  assert.deepEqual(r.data, { ...data, photos: [] })
+  assert.deepEqual(r.data, { ...data, photos: [], todos: [] })
 })
 test('not json', () => { assert.deepEqual(parseBackup('{'), { ok: false, error: '백업 파일을 읽을 수 없어요' }) })
 test('wrong app', () => {

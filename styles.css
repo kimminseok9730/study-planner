@@ -165,3 +165,22 @@ tr.flag td { background: color-mix(in srgb, #ffd866 var(--hl), var(--paper)); }
 .subjbar .track i { display: block; height: 100%; }
 .subjbar b { font: 600 13px var(--mono); text-align: right; }
 .subjbar small { font: 400 11px var(--mono); color: var(--pencil); text-align: right; }
+
+/* tabs: DAILY / TO DO, like index tabs on a planner */
+.tabs { display: flex; gap: 0; border-bottom: 1.5px solid var(--ink); margin-bottom: -4px; }
+.tabs button { border: 1.5px solid var(--ink); border-bottom: 0; margin-right: -1.5px; background: transparent; color: var(--pencil); font: 600 12px var(--mono); letter-spacing: .12em; padding: 6px 18px; min-height: 38px; display: flex; align-items: center; gap: 8px; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+.tabs i { font-style: normal; letter-spacing: 0; background: var(--danger); color: var(--paper); min-width: 18px; height: 18px; line-height: 18px; text-align: center; padding: 0 4px; font-size: 11px; }
+
+/* TO DO */
+.todos { display: flex; flex-direction: column; gap: 22px; max-width: 760px; width: 100%; }
+.todoadd { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: 10px; align-items: end; margin-top: 10px; }
+@media (max-width: 560px) { .todoadd { grid-template-columns: minmax(0, 1fr) auto; } .todoadd input[type=text] { grid-column: 1 / -1; } }
+.todo { display: grid; grid-template-columns: 26px 12px minmax(0, 1fr) auto; gap: 9px; align-items: center; border-bottom: 1px solid var(--rule); min-height: 48px; }
+.todo button.box { width: 26px; height: 26px; min-height: 0; padding: 0; background: transparent; }
+.todo button.what { border: 0; background: transparent; text-align: left; padding: 8px 0; min-height: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todo .what small { color: var(--pencil); font-size: 12px; margin-left: 8px; }
+.todo .when { color: var(--pencil); font: 400 12px var(--mono); white-space: nowrap; }
+.todo .when b { color: var(--ink); font-weight: 600; font-size: 13px; }
+.todo.late .when b { color: var(--danger); }
+.todo.done .what > span { text-decoration: line-through; text-decoration-color: var(--pencil); color: var(--pencil); }

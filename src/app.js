@@ -5,6 +5,8 @@ import { renderHead, renderPlans, renderTimeTable } from './views/day.js'
 import { renderCourses } from './views/courses.js'
 import { renderBacklog } from './views/backlog.js'
 import { renderPhotos } from './views/dayphoto.js'
+import { renderTodos } from './views/todos.js'
+import { urgentCount } from './todos.js'
 import { renderTimerBar } from './views/timer.js'
 import { h } from './ui.js'
 
@@ -20,6 +22,8 @@ const ctx = {
   plans: [],   // plans for ctx.date
   actuals: [], // actuals for ctx.date
   photos: [],  // photos for ctx.date
+  todos: [],
+  tab: 'day',  // 'day' | 'todo'
   allPlans: [],
   allActuals: [],
   courseById(id) { return ctx.courses.find((c) => c.id === id) },
@@ -32,7 +36,7 @@ const ctx = {
   setDate(d) { ctx.date = d; return ctx.refresh() },
   async refresh() {
     const s = ctx.store
-    ;[ctx.settings, ctx.courses, ctx.allPlans, ctx.allActuals] = await Promise.all([s.getSettings(), s.getAll('courses'), s.getAll('plans'), s.getAll('actuals')])
+    ;[ctx.settings, ctx.courses, ctx.allPlans, ctx.allActuals, ctx.todos] = await Promise.all([s.getSettings(), s.getAll('courses'), s.getAll('plans'), s.getAll('actuals'), s.getAll('todos')])
     // One-time move to the 04:00–02:00 study day.
     if (!ctx.settings.rangeV2) ctx.settings = await s.saveSettings({ dayStart: '04:00', dayEnd: '26:00', rangeV2: true })
     ctx.date ||= ctx.today()
@@ -49,9 +53,16 @@ const ctx = {
 
 function render() {
   const keepFocus = document.activeElement?.id === 'memo'
-  const left = h('div', { class: 'col' }, renderPlans(ctx), renderBacklog(ctx), renderPhotos(ctx), renderCourses(ctx))
-  const right = h('div', { class: 'col' }, renderTimeTable(ctx))
-  root.replaceChildren(h('div', { class: 'page' }, ...renderHead(ctx), h('div', { class: 'cols' }, left, right)))
+  const urgent = urgentCount(ctx.todos, ctx.today())
+  const tab = (id, label, extra) => h('button', { role: 'tab', 'aria-selected': String(ctx.tab === id), onClick: () => { ctx.tab = id; render(); window.scrollTo(0, 0) } }, label, extra)
+  const tabs = h('div', { class: 'tabs', role: 'tablist' }, tab('day', 'DAILY'), tab('todo', 'TO DO', urgent ? h('i', { 'aria-label': `급한 것 ${urgent}개` }, urgent) : null))
+  if (ctx.tab === 'todo') {
+    root.replaceChildren(h('div', { class: 'page' }, tabs, renderTodos(ctx)))
+  } else {
+    const left = h('div', { class: 'col' }, renderPlans(ctx), renderBacklog(ctx), renderPhotos(ctx), renderCourses(ctx))
+    const right = h('div', { class: 'col' }, renderTimeTable(ctx))
+    root.replaceChildren(h('div', { class: 'page' }, tabs, ...renderHead(ctx), h('div', { class: 'cols' }, left, right)))
+  }
   renderTimerBar(timerRoot, ctx)
   if (keepFocus) document.getElementById('memo')?.focus()
 }
@@ -76,7 +87,28 @@ async function boot() {
   })
   // Ask Safari not to evict this app's data.
   navigator.storage?.persist?.().catch(() => {})
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {})
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) watchForUpdates()
+}
+
+// A home-screen app on iPad is resumed, not reopened, so it never looks for a new version by itself.
+// Look every time the app comes to the front, and reload once the new version has taken over.
+function watchForUpdates() {
+  const sw = navigator.serviceWorker
+  const hadVersion = Boolean(sw.controller) // false on the very first visit: nothing to replace
+  let waiting = false
+  const reloadIfIdle = () => {
+    if (!waiting || document.body.classList.contains('sheet-open')) return // never throw away a half-filled form
+    waiting = false
+    location.reload()
+  }
+  sw.addEventListener('controllerchange', () => { if (hadVersion) { waiting = true; reloadIfIdle() } })
+  sw.register('sw.js').then((reg) => {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return
+      reg.update().catch(() => {})
+      reloadIfIdle()
+    })
+  }).catch(() => {})
 }
 
 boot()

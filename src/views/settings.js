@@ -49,7 +49,7 @@ export function openSettings(ctx) {
     if (!r.ok) return (msg.textContent = r.error)
     msg.textContent = ''
     confirmBox.replaceChildren(h('div', { class: 'banner' },
-      h('span', {}, `강좌 ${r.data.courses.length}개, 계획 ${r.data.plans.length}개, 기록 ${r.data.actuals.length}개, 사진 ${r.data.photos.length}장으로 지금 데이터를 바꿀까요?`),
+      h('span', {}, `강좌 ${r.data.courses.length}개, 계획 ${r.data.plans.length}개, 기록 ${r.data.actuals.length}개, 사진 ${r.data.photos.length}장, 할 일 ${r.data.todos.length}개로 지금 데이터를 바꿀까요?`),
       h('button', { class: 'danger', onClick: async () => {
         await ctx.store.replaceAll(r.data)
         closeSheet(); toast('백업을 불러왔어요'); await ctx.refresh()
