@@ -1,5 +1,5 @@
 // App shell cache. Bump VERSION when shipping changes.
-const VERSION = 'cache-v6'
+const VERSION = 'cache-v7'
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',

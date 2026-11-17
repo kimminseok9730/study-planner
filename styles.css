@@ -214,3 +214,15 @@ tr.flag td { background: color-mix(in srgb, #ffd866 var(--hl), var(--paper)); }
 .seg.range button { flex: none; margin-left: 4px; }
 .subj.days button { min-width: 38px; padding: 4px 6px; }
 .subj.days button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+/* calendar: a sheet you can throw sideways */
+.calwrap { overflow: hidden; padding: 6px 4px 14px; margin: -6px -4px -14px; }
+.cal { background: var(--paper); touch-action: pan-y; user-select: none; -webkit-user-select: none; transform-origin: 50% 120%; will-change: transform; }
+.cal.dragging { box-shadow: 0 14px 30px rgba(20, 19, 17, .22); cursor: grabbing; }
+.cal.enter-next { animation: cal-in-next .5s cubic-bezier(.18,1.35,.4,1) both; }
+.cal.enter-prev { animation: cal-in-prev .5s cubic-bezier(.18,1.35,.4,1) both; }
+@keyframes cal-in-next { from { transform: translateX(70%) rotate(6deg); opacity: 0; } 60% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes cal-in-prev { from { transform: translateX(-70%) rotate(-6deg); opacity: 0; } 60% { opacity: 1; } to { transform: none; opacity: 1; } }
+.calbox .statnav b.pop { animation: cal-pop .45s cubic-bezier(.2,1.6,.4,1) both; display: inline-block; }
+@keyframes cal-pop { from { transform: scale(1.5); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cal.enter-next, .cal.enter-prev, .calbox .statnav b.pop { animation: none; } }
